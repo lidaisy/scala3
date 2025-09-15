@@ -250,6 +250,10 @@ object Annotations {
 
   @sharable val EmptyAnnotation = Annotation(EmptyTree)
 
+  case class Valhalla(t: Tree) extends Annotation {
+    def tree(using Context): Tree = t
+  }
+
   def ThrowsAnnotation(cls: ClassSymbol)(using Context): Annotation = {
     val tref = cls.typeRef
     Annotation(defn.ThrowsAnnot.typeRef.appliedTo(tref), Ident(tref), cls.span)

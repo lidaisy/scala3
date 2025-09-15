@@ -262,7 +262,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
   /**
    * Return the Java modifiers for the given symbol.
    * Java modifiers for classes:
-   *  - public, abstract, final, strictfp (not used)
+   *  - public, abstract, final, strictfp (not used), identity
    * for interfaces:
    *  - the same as for classes, without 'final'
    * for fields:
@@ -300,11 +300,12 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
         // suppress final if abstract if present.
         && !sym.isOneOf(AbstractOrTrait)
         //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
-        && !sym.is(Bridge), ACC_FINAL)
+        && !sym.is(Bridge) || sym.isValhallaValueClass, ACC_FINAL)
       .addFlagIf(sym.isStaticMember, ACC_STATIC)
       .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
       .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
-      .addFlagIf(sym.isClass && !sym.isInterface, ACC_SUPER)
+//      .addFlagIf(sym.isClass && !sym.isInterface, ACC_SUPER)
+      .addFlagIf(sym.isClass && !sym.isInterface && !sym.isValhallaValueClass, ACC_SUPER) // named ACC_IDENTITY in JVM preview
       .addFlagIf(sym.isAllOf(JavaEnum), ACC_ENUM)
       .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
       .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)

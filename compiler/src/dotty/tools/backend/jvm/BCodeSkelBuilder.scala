@@ -347,6 +347,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val ssa = None // TODO: inlined form `getAnnotPickle(thisName, claszSymbol)`. Should something be done on Dotty?
       cnode.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
+      
+//      if claszSymbol.symbol.is
+//      cnode.visitAttribute(LoadableDescriptors)
       emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
 
       if (!isCZStaticModule && !isCZParcelable) {

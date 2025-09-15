@@ -892,6 +892,8 @@ object SymDenotations {
 
     /** Is this symbol a class that extends `AnyVal`? Overridden in ClassDenotation */
     def isValueClass(using Context): Boolean = false
+    
+    def isValhallaValueClass(using Context): Boolean = false
 
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
@@ -2106,6 +2108,9 @@ object SymDenotations {
         // after Erasure and to avoid cyclic references caused by forcing denotations
         atPhase(di.validFor.firstPhaseId)(di.derivesFrom(anyVal))
 
+    final override def isValhallaValueClass(using Context): Boolean =
+      false
+    
     /** Enter a symbol in current scope, and future scopes of same denotation.
      *  Note: We require that this does not happen after the first time
      *  someone does a findMember on a subclass.

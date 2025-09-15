@@ -114,6 +114,8 @@ object DottyBackendInterface {
 
   given symExtensions: AnyRef with
     extension (sym: Symbol)
+      
+      // or here?
 
       def isInterface(using Context): Boolean = (sym.is(PureInterface)) || sym.is(Trait)
 

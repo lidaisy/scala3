@@ -36,4 +36,6 @@ public class ClassNode1 extends ClassNode {
         methods.add(method);
         return method;
     }
+    
+    
 }

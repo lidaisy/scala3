@@ -216,6 +216,9 @@ object Symbols extends SymUtils {
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(using Context): Boolean =
       lastDenot.initial.isStatic
+      
+    def isValhallaValueClass(using Context): Boolean =
+      !lastDenot.isValhallaValueClass
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(using Context): this.type = {
@@ -538,6 +541,9 @@ object Symbols extends SymUtils {
             }
       mySource
     }
+
+    override final def isValhallaValueClass(using Context): Boolean =
+      !classDenot.isValhallaValueClass
 
     final def classDenot(using Context): ClassDenotation =
       denot.asInstanceOf[ClassDenotation]

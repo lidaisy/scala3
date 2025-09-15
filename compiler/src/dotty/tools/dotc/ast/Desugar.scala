@@ -660,6 +660,8 @@ object desugar {
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(using Context): Tree = {
+    
+    // ancestors!!!!!!!!!! 
     val impl @ Template(constr0, _, self, _) = cdef.rhs: @unchecked
     val className = normalizeName(cdef, impl).asTypeName
     val parents = impl.parents
@@ -687,6 +689,7 @@ object desugar {
 
     /** Does `tree' look like a reference to AnyVal? Temporary test before we have inline classes */
     def isAnyVal(tree: Tree): Boolean = tree match {
+      // ancestor x2
       case Ident(tpnme.AnyVal) => true
       case Select(qual, tpnme.AnyVal) => isScala(qual)
       case _ => false
@@ -706,6 +709,7 @@ object desugar {
     def isEnumCase = mods.isEnumCase
     def isNonEnumCase = !isEnumCase && (isCaseClass || isCaseObject)
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
+    //does valhalla classes also extend AnyVal? if so can continue using this
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
     val caseClassInScala2Library = isCaseClass && Feature.shouldBehaveAsScala2
 
@@ -950,6 +954,8 @@ object desugar {
     if (isEnum)
       parents1 = parents1 :+ ref(defn.EnumClass)
 
+    // ancestors what are these????
+    
     // derived type classes of non-module classes go to their companions
     val (clsDerived, companionDerived) =
       if (mods.is(Module)) (impl.derived, Nil) else (Nil, impl.derived)
@@ -1031,9 +1037,10 @@ object desugar {
       }
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)
-      else if isValueClass && !isObject then
+      else if isValueClass && !isObject then {
+        // add something here?
         companionDefs(anyRef, Nil)
-      else Nil
+      } else Nil
 
     enumCompanionRef match {
       case ref: TermRefTree => // have the enum import watch the companion object

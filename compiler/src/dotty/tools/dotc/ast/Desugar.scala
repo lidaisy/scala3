@@ -689,7 +689,6 @@ object desugar {
 
     /** Does `tree' look like a reference to AnyVal? Temporary test before we have inline classes */
     def isAnyVal(tree: Tree): Boolean = tree match {
-      // ancestor x2
       case Ident(tpnme.AnyVal) => true
       case Select(qual, tpnme.AnyVal) => isScala(qual)
       case _ => false
@@ -709,7 +708,6 @@ object desugar {
     def isEnumCase = mods.isEnumCase
     def isNonEnumCase = !isEnumCase && (isCaseClass || isCaseObject)
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
-    //does valhalla classes also extend AnyVal? if so can continue using this
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
     val caseClassInScala2Library = isCaseClass && Feature.shouldBehaveAsScala2
 
@@ -1038,7 +1036,7 @@ object desugar {
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)
       else if isValueClass && !isObject then {
-        // add something here?
+        // && mods.isEnumCase
         companionDefs(anyRef, Nil)
       } else Nil
 

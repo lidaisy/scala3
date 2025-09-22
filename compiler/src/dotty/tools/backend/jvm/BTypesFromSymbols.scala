@@ -287,6 +287,10 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
 
     val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.isMutableVar && !sym.enclosingClass.is(Trait)
 
+    // TODO: add final to VVC methods and VCs
+    val isValhallaVCMethOrClass = false
+
+
     import asm.Opcodes.*
     import GenBCodeOps.addFlagIf
     0 .addFlagIf(privateFlag, ACC_PRIVATE)
@@ -305,6 +309,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
       .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
       .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
       .addFlagIf(sym.isClass && !sym.isInterface, ACC_SUPER)
+//      .addFlagIf(sym.isClass && !sym.isInterface && !sym.isValhallaValueClass, ACC_SUPER) // named ACC_IDENTITY in JVM preview
       .addFlagIf(sym.isAllOf(JavaEnum), ACC_ENUM)
       .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
       .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)

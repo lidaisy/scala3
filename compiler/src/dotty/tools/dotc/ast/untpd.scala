@@ -337,6 +337,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def isEnumCase: Boolean = isEnum && is(Case)
     def isEnumClass: Boolean = isEnum && !is(Case)
     def isMutableVar: Boolean = is(Mutable) && mods.exists(_.isInstanceOf[Mod.Var])
+//    def isValhallaVC: Boolean = annotations.exists()
   }
 
   @sharable val EmptyModifiers: Modifiers = Modifiers()

@@ -1,0 +1,1 @@
+class ScalaValueClass(val underlying: Int) extends AnyVal

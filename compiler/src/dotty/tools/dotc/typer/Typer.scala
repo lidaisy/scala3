@@ -3339,7 +3339,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val firstParent = firstParentTpe.typeSymbol
 
     checkEnumParent(cls, firstParent)
-
+    // backward compat?
     if defn.ScalaValueClasses()(cls) && Feature.shouldBehaveAsScala2 then
       constr1.symbol.resetFlag(Private)
 
@@ -3378,6 +3378,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       // check value class constraints
       checkDerivedValueClass(cdef, cls, body1)
+
+      // check Valhalla value class constraints
+      if(!ctx.isAfterTyper)
+        checkValhallaValueClass(cdef, cls, body1)
 
       val effectiveOwner = cls.owner.skipWeakOwner
       if cls.is(ModuleClass)
@@ -3506,6 +3510,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
+    // here
     var annotCtx = ctx.addMode(Mode.InAnnotation)
     if tree.annot.hasAttachment(untpd.RetainsAnnot) then
       annotCtx = annotCtx.addMode(Mode.InCaptureSet)

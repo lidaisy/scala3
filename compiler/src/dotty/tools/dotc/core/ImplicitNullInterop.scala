@@ -56,6 +56,8 @@ import reporting.*
  *
  *  Additionally, some kinds of symbols like constructors and enum instances get special treatment.
  */
+
+// ImplicitNullInterop.nullifyMember is called => creates ImplicitNullMap => calls apply => calls needsNull
 object ImplicitNullInterop:
 
   /** Transforms the type `tp` of a member `sym` that originates from a source without explicit nulls.
@@ -115,6 +117,7 @@ object ImplicitNullInterop:
         case tp: TypeRef =>
           // We don't modify value types because they're non-nullable even in Java.
           val isValueOrSpecialClass =
+//            (tp.symbol.isValueClass && !tp.symbol.isValhallaValueClass)
             tp.symbol.isValueClass
             || tp.isRef(defn.NullClass)
             || tp.isRef(defn.NothingClass)
@@ -122,6 +125,7 @@ object ImplicitNullInterop:
             || tp.isRef(defn.SingletonClass)
             || tp.isRef(defn.AnyKindClass)
             || tp.isRef(defn.AnyClass)
+          println("daisy" + isValueOrSpecialClass)
           !isValueOrSpecialClass && (javaDefined || tp.symbol.isNullableClassAfterErasure)
         case tp: TypeParamRef =>
           javaDefined

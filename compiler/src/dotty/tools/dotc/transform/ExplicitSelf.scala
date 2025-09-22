@@ -34,6 +34,9 @@ class ExplicitSelf extends MiniPhase {
 
   private def castQualifier(tree: RefTree, cls: ClassSymbol, thiz: Tree)(using Context) =
     val selfType = cls.classInfo.selfType
+    println("daisy in castQualifier")
+    println(selfType)
+    println(selfType.classSymbols)
     if selfType.classSymbols.exists(_.isValueClass) && !cls.isUniversalTrait then
       report.error(em"self type $selfType of $cls may not be a value class", thiz.srcPos)
     cpy.Select(tree)(thiz.cast(AndType(selfType, thiz.tpe)), tree.name)

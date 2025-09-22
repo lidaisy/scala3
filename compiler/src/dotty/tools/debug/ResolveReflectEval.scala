@@ -133,6 +133,8 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
             case ReflectEvalStrategy.StaticObject(obj) => gen.getStaticObject(obj)
             
             case ReflectEvalStrategy.Field(field, isByName) =>
+              // This phase is a part of the Expression Compiler, which we need to look into
+              // since it uses value classes, etc.
               // if the field is lazy, if it is private in a value class or a trait
               // then we must call the getter method
               val fieldValue =

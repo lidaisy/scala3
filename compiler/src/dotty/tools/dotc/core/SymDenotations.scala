@@ -896,6 +896,9 @@ object SymDenotations {
     /** Is this symbol a class that ...? Overridden in ClassDenotation */
     def isValhallaValueClass(using Context): Boolean = false
 
+    /** Is this symbol a class that has identity? Overridden in ClassDenotation */
+    def isIdentityClass(using Context): Boolean = false
+
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
       if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes
@@ -2109,6 +2112,9 @@ object SymDenotations {
 
     final override def isValhallaValueClass(using Context): Boolean =
       hasAnnotation(defn.ValhallaAnnot)
+
+    final override def isIdentityClass(using Context): Boolean =
+      isRealClass && !isValueClass
     
     /** Enter a symbol in current scope, and future scopes of same denotation.
      *  Note: We require that this does not happen after the first time

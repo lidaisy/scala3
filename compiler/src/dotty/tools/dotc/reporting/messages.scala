@@ -1852,6 +1852,24 @@ class ValueClassCannotExtendAliasOfAnyVal(valueClass: Symbol, alias: Symbol)(usi
   def explain(using Context) = ""
 }
 
+class ValueClassCannotExtendIdentityOrNonAbstractValueClass(valueClass: Symbol, parent: Symbol)(using Context)
+extends SyntaxMsg(ValueClassCannotExtendAliasOfAnyValID) {
+  def msg(using Context) = i"""A Valhalla value class cannot extend non-abstract Valhalla Value Class or Identity Class ($parent)}"""
+  def explain(using Context) = ""
+}
+
+class ValhallaValueClassesMayNotDefineMutableField(valueClass: Symbol, field: Symbol)(using Context)
+extends SyntaxMsg(ValueClassCannotExtendAliasOfAnyValID) {
+  def msg(using Context) = i"""A Valhalla value class may not have a mutable field ($field)}"""
+  def explain(using Context) = ""
+}
+
+class ValueTraitCannotExtendAnyRef(valueClass: Symbol)(using Context)
+extends SyntaxMsg(ValueClassCannotExtendAliasOfAnyValID) {
+  def msg(using Context) = i"""A Valhalla trait cannot extend AnyRef"""
+  def explain(using Context) = ""
+}
+
 class SuperCallsNotAllowedInlineable(symbol: Symbol)(using Context)
   extends SyntaxMsg(SuperCallsNotAllowedInlineableID) {
   def msg(using Context) = i"Super call not allowed in inlineable $symbol"

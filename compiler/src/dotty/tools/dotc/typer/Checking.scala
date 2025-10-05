@@ -892,6 +892,38 @@ object Checking {
     }
   }
 
+  def checkValhallaValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
+    def checkValueClassMember(stat: Tree) = stat match {
+      case _: ValDef if stat.symbol.isMutableVar =>
+        report.error(ValhallaValueClassesMayNotDefineMutableField(clazz, stat.symbol), stat.srcPos)
+      case _ =>
+      // ok
+    }
+
+    inline def checkParents(): Unit = {
+      cdef.rhs match {
+        case impl: Template =>
+          if (clazz.is(Trait)) {
+            if (clazz.asClass.baseClasses.contains(defn.ObjectClass))
+              report.error(ValueTraitCannotExtendAnyRef(clazz), cdef.srcPos)
+          }
+          else {
+            println("parents of " + clazz)
+            println(impl.parents)
+            val parent = impl.parents.head
+
+            if (parent.symbol ne defn.AnyValClass) &&(!(parent.symbol.isValhallaValueClass && parent.symbol.is(Abstract)) || parent.symbol.isIdentityClass) then
+              report.error(ValueClassCannotExtendIdentityOrNonAbstractValueClass(clazz, parent.symbol), cdef.srcPos)
+          }
+        case _ => ()
+      }
+    }
+
+    if (clazz.isValhallaValueClass) {
+      checkParents()
+      stats.foreach(checkValueClassMember)
+    }
+  }
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
     lazy val params = sym.paramSymss.flatten

@@ -3370,6 +3370,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       checkDerivedValueClass(cdef, cls, body1)
 
       // check Valhalla value class constraints
+      if(!ctx.isAfterTyper)
+        checkValhallaValueClass(cdef, cls, body1)
 
       val effectiveOwner = cls.owner.skipWeakOwner
       if cls.is(ModuleClass)

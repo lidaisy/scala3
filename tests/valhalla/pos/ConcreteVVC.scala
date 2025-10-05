@@ -1,7 +1,7 @@
 import scala.annotation.valhalla
 
 @valhalla
-class MyValueClass extends AnyVal {
+class ConcreteVVC extends AnyVal {
   val a = 5
   val b = 50
 

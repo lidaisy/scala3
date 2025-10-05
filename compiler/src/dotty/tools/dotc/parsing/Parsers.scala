@@ -1056,17 +1056,22 @@ object Parsers {
       }
 
     /** Is current ident a `*`, and is it followed by a `)`, `, )`, `,EOF`? The latter two are not
-        syntactically valid, but we need to include them here for error recovery. */
+        syntactically valid, but we need to include them here for error recovery.
+        Under experimental.multiSpreads we allow `*`` followed by `,` unconditionally.
+     */
     def followingIsVararg(): Boolean =
       in.isIdent(nme.raw.STAR) && {
         val lookahead = in.LookaheadScanner()
         lookahead.nextToken()
         lookahead.token == RPAREN
         || lookahead.token == COMMA
-           && {
-             lookahead.nextToken()
-             lookahead.token == RPAREN || lookahead.token == EOF
-           }
+           && (
+              in.featureEnabled(Feature.multiSpreads)
+              || {
+                lookahead.nextToken()
+                lookahead.token == RPAREN || lookahead.token == EOF
+              }
+            )
       }
 
     /** When encountering a `:`, is that in the binding of a lambda?
@@ -3347,7 +3352,9 @@ object Parsers {
       if (in.token == RPAREN) Nil else patterns(location)
 
     /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
-     *                      |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
+     *                      |  ‘(’ [Patterns ‘,’] PatVar ‘*’ [‘,’ Patterns] ‘)’
+     *
+     *  -- It is checked in Typer that there are no repeated PatVar arguments.
      */
     def argumentPatterns(): List[Tree] =
       inParensWithCommas(patternsOpt(Location.InPatternArgs))
@@ -3367,12 +3374,14 @@ object Parsers {
       case IDENTIFIER =>
         name match {
           case nme.inline => Mod.Inline()
-          case nme.into => Mod.Into()
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
           case nme.transparent => Mod.Transparent()
           case nme.infix => Mod.Infix()
           case nme.tracked => Mod.Tracked()
+          case nme.into =>
+            Feature.checkPreviewFeature("`into`", in.sourcePos())
+            Mod.Into()
           case nme.erased if in.erasedEnabled => Mod.Erased()
           case nme.update if Feature.ccEnabled => Mod.Update()
         }

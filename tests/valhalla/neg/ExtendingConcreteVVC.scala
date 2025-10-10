@@ -9,4 +9,6 @@ class ConcreteVVC extends AnyVal {
 }
 
 @valhalla
-class ExtendingConcrete extends ConcreteVVC // error
+class VVC extends ConcreteVVC // error
+
+class Ident extends ConcreteVVC // error

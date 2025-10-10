@@ -1,6 +1,6 @@
 import scala.annotation.valhalla
 
 @valhalla
-class MutableField extends AnyVal {
+class VVCMutableField extends AnyVal {
   var a = 5 // error
 }

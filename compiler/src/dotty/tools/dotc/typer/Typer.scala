@@ -3638,7 +3638,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Retrieve symbol attached to given tree */
   protected def retrieveSym(tree: untpd.Tree)(using Context): Symbol = tree.removeAttachment(SymOfTree) match {
     case Some(sym) =>
-      print(sym)
       sym.ensureCompleted()
       sym
     case none =>

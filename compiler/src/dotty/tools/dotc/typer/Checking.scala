@@ -908,11 +908,9 @@ object Checking {
               report.error(ValueTraitCannotExtendAnyRef(clazz), cdef.srcPos)
           }
           else {
-            println("parents of " + clazz)
-            println(impl.parents)
             val parent = impl.parents.head
 
-            if (parent.symbol ne defn.AnyValClass) &&(!(parent.symbol.isValhallaValueClass && parent.symbol.is(Abstract)) || parent.symbol.isIdentityClass) then
+            if ((parent.symbol ne defn.AnyValClass) && !parent.symbol.isValhallaValueClass) then
               report.error(ValueClassCannotExtendIdentityOrNonAbstractValueClass(clazz, parent.symbol), cdef.srcPos)
           }
         case _ => ()

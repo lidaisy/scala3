@@ -1451,7 +1451,7 @@ object Types extends TypeUtils {
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
     def widenUnion(using Context): Type = widen match
-      case tp: OrType =>
+      case tp: OrType if ctx.explicitNulls =>
         val tp1 = tp.stripNull(stripFlexibleTypes = false)
         if tp1 ne tp then
           val tp1Widen = tp1.widenUnionWithoutNull
@@ -7066,7 +7066,10 @@ object Types extends TypeUtils {
         case tp: TypeRef if tp.info.isTypeAlias =>
           apply(n, tp.superType)
         case tp: TypeParamRef =>
-          apply(n, TypeComparer.bounds(tp))
+          val bounds = TypeComparer.bounds(tp)
+          val loSize = apply(n, bounds.lo)
+          val hiSize = apply(n, bounds.hi)
+          hiSize max loSize
         case tp: LazyRef =>
           if seen.contains(tp) then n
           else

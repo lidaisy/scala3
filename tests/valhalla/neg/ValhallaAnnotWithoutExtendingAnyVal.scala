@@ -5,6 +5,6 @@ abstract class Abs {
 }
 
 @valhalla
-class ExtendingNonValhallaAbstractClass extends Abs{ // error or warning here
+class ValhallaAnnotWithoutExtendingAnyVal extends Abs{ // error
   def addOne(x : Int) : Int = x + 1
 }

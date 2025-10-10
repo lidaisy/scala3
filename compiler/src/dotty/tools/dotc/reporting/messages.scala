@@ -1852,20 +1852,26 @@ class ValueClassCannotExtendAliasOfAnyVal(valueClass: Symbol, alias: Symbol)(usi
   def explain(using Context) = ""
 }
 
-class ValueClassCannotExtendIdentityOrNonAbstractValueClass(valueClass: Symbol, parent: Symbol)(using Context)
-extends SyntaxMsg(ValueClassCannotExtendAliasOfAnyValID) {
-  def msg(using Context) = i"""A Valhalla value class cannot extend non-abstract Valhalla Value Class or Identity Class ($parent)}"""
+class ValueClassCannotExtendIdentityClass(valueClass: Symbol, parent: Symbol)(using Context)
+  extends SyntaxMsg(ValueClassCannotExtendIdentityClassID) {
+  def msg(using Context) = i"""A Valhalla value class cannot extend Identity Class ($parent)}"""
+  def explain(using Context) = ""
+}
+
+class IncorrectValueClassDeclaration(valueClass: Symbol)(using Context)
+  extends SyntaxMsg(IncorrectValueClassDeclarationID) {
+  def msg(using Context) = i"""A Valhalla Value Class needs to extend AnyVal}"""
   def explain(using Context) = ""
 }
 
 class ValhallaValueClassesMayNotDefineMutableField(valueClass: Symbol, field: Symbol)(using Context)
-extends SyntaxMsg(ValueClassCannotExtendAliasOfAnyValID) {
+  extends SyntaxMsg(ValhallaValueClassesMayNotDefineMutableFieldID) {
   def msg(using Context) = i"""A Valhalla value class may not have a mutable field ($field)}"""
   def explain(using Context) = ""
 }
 
 class ValueTraitCannotExtendAnyRef(valueClass: Symbol)(using Context)
-extends SyntaxMsg(ValueClassCannotExtendAliasOfAnyValID) {
+  extends SyntaxMsg(ValueTraitCannotExtendAnyRefID) {
   def msg(using Context) = i"""A Valhalla trait cannot extend AnyRef"""
   def explain(using Context) = ""
 }

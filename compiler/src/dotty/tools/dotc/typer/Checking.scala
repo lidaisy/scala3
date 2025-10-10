@@ -911,12 +911,14 @@ object Checking {
             val parent = impl.parents.head
 
             if ((parent.symbol ne defn.AnyValClass) && !parent.symbol.isValhallaValueClass) then
-              report.error(ValueClassCannotExtendIdentityOrNonAbstractValueClass(clazz, parent.symbol), cdef.srcPos)
+              report.error(ValueClassCannotExtendIdentityClass(clazz, parent.symbol), cdef.srcPos)
           }
         case _ => ()
       }
     }
 
+    if(clazz.hasAnnotation(defn.ValhallaAnnot) && !clazz.is(Trait) && !clazz.isValueClass)
+      report.error(IncorrectValueClassDeclaration(clazz), cdef.srcPos)
     if (clazz.isValhallaValueClass) {
       checkParents()
       stats.foreach(checkValueClassMember)

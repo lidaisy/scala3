@@ -1378,8 +1378,20 @@ object Types extends TypeUtils {
     final def widen(using Context): Type = this match
       case _: TypeRef | _: MethodOrPoly => this // fast path for most frequent cases
       case tp: TermRef => // fast path for next most frequent case
+//        println("this " + this.toString)
         val denot = tp.denot
-        if denot.isOverloaded then tp else denot.info.widen
+        if denot.isOverloaded then
+          if(this.toString == "TermRef(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <empty>)),object vc$package),type DFValOf),method <init>)")
+            println("daisy1")
+          tp
+        else
+          if(this.toString == "TermRef(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <empty>)),object vc$package),type DFValOf),method <init>)")
+            println("daisy2")
+            print("denot.info ")
+            println(denot.info)
+            print("denot.info.widen ")
+            println(denot.info.widen)
+          denot.info.widen
       case tp: SingletonType => tp.underlying.widen
       case tp: ExprType => tp.resultType.widen
       case tp =>

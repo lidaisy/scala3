@@ -379,6 +379,16 @@ trait TypeAssigner {
             }
           }
           else if !args.hasSameLengthAs(paramNames) then
+            println("run fn " + fn.toString)
+            println("fn.tpe " + fn.tpe)
+            println("fn.tpe.widen " + fn.tpe.widen)
+            print("args: ")
+            print(args)
+            print(" args.length: ")
+            print(args.length)
+            print(" paramNames ")
+            println(paramNames)
+//            println("tparams.length " + tparams.length)
             wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.srcPos)
           else {
             // Make sure arguments don't contain the type `pt` itself.
@@ -509,6 +519,7 @@ trait TypeAssigner {
       if tparams.hasSameLengthAs(args) then
         processAppliedType(tree, tycon.tpe.appliedTo(args.tpes))
       else
+        print("run args111: ")
         wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
     tree.withType(ownType)
   }

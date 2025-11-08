@@ -607,6 +607,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 val reference = ctx.settings.sourceroot.value
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
                 sym.addAnnotation(Annotation(defn.SourceFileAnnot, Literal(Constants.Constant(relativePath)), tree.span))
+            Checking.checkValhallaValueClass(tree, sym, tree.rhs.asInstanceOf[Template].body)
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)

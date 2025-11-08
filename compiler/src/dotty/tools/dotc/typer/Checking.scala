@@ -899,7 +899,7 @@ object Checking {
   }
 
   // Verify classes and traits with the valhalla annotation meet the requirements
-  def checkValhallaValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
+  def checkValhallaValueClass(cdef: TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: ValDef if stat.symbol.isMutableVar =>
         report.error(ValhallaValueClassesMayNotDefineMutableField(clazz, stat.symbol), stat.srcPos)
@@ -926,6 +926,7 @@ object Checking {
 
     if(clazz.hasAnnotation(defn.ValhallaAnnot) && clazz.asClass.baseClasses.contains(defn.ObjectClass))
       report.error(IncorrectValueClassDeclaration(clazz), cdef.srcPos)
+
     if (clazz.isValhallaValueClass)
       checkParents()
       stats.foreach(checkValueClassMember)

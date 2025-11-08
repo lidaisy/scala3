@@ -930,6 +930,12 @@ object Checking {
     if (clazz.isValhallaValueClass)
       checkParents()
       stats.foreach(checkValueClassMember)
+
+      if(clazz.asClass.givenSelfType.exists)
+        val selfTypeSym = clazz.asClass.givenSelfType.classSymbol
+
+        if(selfTypeSym.exists && !selfTypeSym.isValhallaValueClass)
+          report.error(ValhallaTraitsMayNotHaveAnyRefSelfTypes(clazz, selfTypeSym), cdef.srcPos)
   }
 
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */

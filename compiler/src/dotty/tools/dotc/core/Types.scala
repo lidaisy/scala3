@@ -654,13 +654,10 @@ object Types extends TypeUtils {
         else if tp.tp2.hasClassSymbol(defn.NothingClass) then
           tp.tp1.classSymbol
         else {
-          println("daisy1 " + ctx.phase)
-          println(ctx.erasedTypes)
           def tp1Null = tp.tp1.hasClassSymbol(defn.NullClass)
           def tp2Null = tp.tp2.hasClassSymbol(defn.NullClass)
           if ctx.erasedTypes && (tp1Null || tp2Null) then
             val otherSide = if tp1Null then tp.tp2.classSymbol else tp.tp1.classSymbol
-            println("Daisy2 " + otherSide)
             if (otherSide.isValueClass && !otherSide.isValhallaValueClass) then defn.AnyClass else otherSide
           else
             tp.join.classSymbol

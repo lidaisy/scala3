@@ -2110,7 +2110,7 @@ object SymDenotations {
         atPhase(di.validFor.firstPhaseId)(di.derivesFrom(anyVal))
 
     final override def isValhallaValueClass(using Context): Boolean =
-      hasAnnotation(defn.ValhallaAnnot) && (is(Trait) || isValueClass)
+      hasAnnotation(defn.ValhallaAnnot) && (symbol.isUniversalTrait || isValueClass)
 
     /** Enter a symbol in current scope, and future scopes of same denotation.
      *  Note: We require that this does not happen after the first time

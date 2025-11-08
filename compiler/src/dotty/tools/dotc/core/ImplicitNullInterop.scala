@@ -117,15 +117,13 @@ object ImplicitNullInterop:
         case tp: TypeRef =>
           // We don't modify value types because they're non-nullable even in Java.
           val isValueOrSpecialClass =
-//            (tp.symbol.isValueClass && !tp.symbol.isValhallaValueClass)
-            tp.symbol.isValueClass
+           (tp.symbol.isValueClass && !tp.symbol.isValhallaValueClass)
             || tp.isRef(defn.NullClass)
             || tp.isRef(defn.NothingClass)
             || tp.isRef(defn.UnitClass)
             || tp.isRef(defn.SingletonClass)
             || tp.isRef(defn.AnyKindClass)
             || tp.isRef(defn.AnyClass)
-          println("daisy" + isValueOrSpecialClass)
           !isValueOrSpecialClass && (javaDefined || tp.symbol.isNullableClassAfterErasure)
         case tp: TypeParamRef =>
           javaDefined

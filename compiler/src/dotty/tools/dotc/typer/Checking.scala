@@ -898,6 +898,7 @@ object Checking {
     }
   }
 
+  // Verify classes and traits with the valhalla annotation meet the requirements
   def checkValhallaValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: ValDef if stat.symbol.isMutableVar =>
@@ -909,27 +910,27 @@ object Checking {
     inline def checkParents(): Unit = {
       cdef.rhs match {
         case impl: Template =>
-          if (clazz.is(Trait)) {
-            if (clazz.asClass.baseClasses.contains(defn.ObjectClass))
-              report.error(ValueTraitCannotExtendAnyRef(clazz), cdef.srcPos)
-          }
-          else {
-            val parent = impl.parents.head
+          impl.parents.foreach(c => {
+            val clsSym = if(c.symbol.isConstructor) then c.symbol.owner else c.symbol
 
-            if ((parent.symbol ne defn.AnyValClass) && !parent.symbol.isValhallaValueClass) then
-              report.error(ValueClassCannotExtendIdentityClass(clazz, parent.symbol), cdef.srcPos)
-          }
+            if(clazz.is(Trait)) then
+              if((clsSym ne defn.AnyClass) && !clsSym.isValhallaValueClass)
+                report.error(ValueClassCannotExtendIdentityClass(clazz, clsSym), cdef.srcPos)
+            else
+              if((clsSym ne defn.AnyValClass) && !clsSym.isValhallaValueClass)
+                report.error(ValueClassCannotExtendIdentityClass(clazz, clsSym), cdef.srcPos)
+          })
         case _ => ()
       }
     }
 
-    if(clazz.hasAnnotation(defn.ValhallaAnnot) && !clazz.is(Trait) && !clazz.isValueClass)
+    if(clazz.hasAnnotation(defn.ValhallaAnnot) && clazz.asClass.baseClasses.contains(defn.ObjectClass))
       report.error(IncorrectValueClassDeclaration(clazz), cdef.srcPos)
-    if (clazz.isValhallaValueClass) {
+    if (clazz.isValhallaValueClass)
       checkParents()
       stats.foreach(checkValueClassMember)
-    }
   }
+
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
     lazy val params = sym.paramSymss.flatten

@@ -1867,19 +1867,13 @@ class ValueClassCannotExtendIdentityClass(valueClass: Symbol, parent: Symbol)(us
 
 class IncorrectValueClassDeclaration(valueClass: Symbol)(using Context)
   extends SyntaxMsg(IncorrectValueClassDeclarationID) {
-  def msg(using Context) = i"""A Valhalla Value Class needs to extend AnyVal}"""
-  def explain(using Context) = ""
+  def msg(using Context) = i"""Incorrect Valhalla value class declaration: a Valhalla value class/trait cannot extend AnyRef."""
+  def explain(using Context) = "Valhalla Value Classes and Traits need to extend AnyVal or Any respectively."
 }
 
 class ValhallaValueClassesMayNotDefineMutableField(valueClass: Symbol, field: Symbol)(using Context)
   extends SyntaxMsg(ValhallaValueClassesMayNotDefineMutableFieldID) {
   def msg(using Context) = i"""A Valhalla value class may not have a mutable field ($field)}"""
-  def explain(using Context) = ""
-}
-
-class ValueTraitCannotExtendAnyRef(valueClass: Symbol)(using Context)
-  extends SyntaxMsg(ValueTraitCannotExtendAnyRefID) {
-  def msg(using Context) = i"""A Valhalla trait cannot extend AnyRef"""
   def explain(using Context) = ""
 }
 

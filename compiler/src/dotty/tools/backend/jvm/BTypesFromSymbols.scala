@@ -304,7 +304,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
       .addFlagIf(sym.isStaticMember, ACC_STATIC)
       .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
       .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
-      .addFlagIf(sym.isClass && !sym.isInterface, ACC_SUPER)
+      .addFlagIf(sym.isClass && !sym.isInterface && !sym.isValhallaValueClass, ACC_SUPER) // named ACC_IDENTITY in JVM preview
       .addFlagIf(sym.isAllOf(JavaEnum), ACC_ENUM)
       .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
       .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)

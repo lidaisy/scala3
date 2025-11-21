@@ -315,6 +315,14 @@ object Types extends TypeUtils {
       loop(this)
     }
 
+    def isValhallaValueClassType(using Context): Boolean =
+      this match
+        case tp: TypeRef =>
+          val sym = tp.symbol
+          if (sym.isClass) sym.isValhallaValueClass else false
+        case _ =>
+          false
+
     def isFromJavaObject(using Context): Boolean =
       isRef(defn.ObjectClass) && (typeSymbol eq defn.FromJavaObjectSymbol)
 
@@ -645,14 +653,15 @@ object Types extends TypeUtils {
           tp.tp2.classSymbol
         else if tp.tp2.hasClassSymbol(defn.NothingClass) then
           tp.tp1.classSymbol
-        else
+        else {
           def tp1Null = tp.tp1.hasClassSymbol(defn.NullClass)
           def tp2Null = tp.tp2.hasClassSymbol(defn.NullClass)
           if ctx.erasedTypes && (tp1Null || tp2Null) then
             val otherSide = if tp1Null then tp.tp2.classSymbol else tp.tp1.classSymbol
-            if otherSide.isValueClass then defn.AnyClass else otherSide
+            if (otherSide.isValueClass && !otherSide.isValhallaValueClass) then defn.AnyClass else otherSide
           else
             tp.join.classSymbol
+        }
       case _: JavaArrayType =>
         defn.ArrayClass
       case _ =>

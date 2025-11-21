@@ -3393,7 +3393,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val firstParent = firstParentTpe.typeSymbol
 
     checkEnumParent(cls, firstParent)
-
+    // backward compat?
     if defn.ScalaValueClasses()(cls) && Feature.shouldBehaveAsScala2 then
       constr1.symbol.resetFlag(Private)
 
@@ -3437,6 +3437,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if cls.is(ModuleClass)
          && effectiveOwner.is(Trait)
          && !effectiveOwner.derivesFrom(defn.ObjectClass)
+         && !effectiveOwner.isValhallaValueClass
       then
         report.error(em"$cls cannot be defined in universal $effectiveOwner", cdef.srcPos)
 
@@ -3561,6 +3562,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   end typedPackageDef
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
+    // here
     var annotCtx = ctx.addMode(Mode.InAnnotation)
     if tree.annot.hasAttachment(untpd.RetainsAnnot) then
       annotCtx = annotCtx.addMode(Mode.InCaptureSet)

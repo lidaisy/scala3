@@ -425,6 +425,9 @@ final class CoreBTypesFromSymbols(ppa: PostProcessorFrontendAccess, primitives: 
   override def jliMethodHandleRef: ClassBType = _jliMethodHandleRef.get
   private lazy val _jliMethodHandleRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.MethodHandleClass))
 
+  override def deepValhallaRef: ClassBType = _deepValhallaRef.get
+  private lazy val _deepValhallaRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.DeepValhallaTrait))
+
   private def jliMethodHandlesLookupRef: ClassBType = _jliMethodHandlesLookupRef.get
   private lazy val _jliMethodHandlesLookupRef: Lazy[ClassBType] = ppa.perRunLazy(classBTypeFromSymbol(defn.MethodHandlesLookupClass))
 

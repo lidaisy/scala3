@@ -412,6 +412,7 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         .addFlagIf(sym.hasAnnotation(TransientAttr), ACC_TRANSIENT)
         .addFlagIf(sym.hasAnnotation(VolatileAttr), ACC_VOLATILE)
         .addFlagIf(!sym.is(Mutable), ACC_FINAL)
+        .addFlagIf(sym.denot.owner.isValhallaValueClass, ACC_STRICT)
     }
 
     def addClassFields(): Unit = {
@@ -438,6 +439,9 @@ trait BCodeSkelBuilder(using ctx: Context) extends BCodeHelpers {
         )
         cnode.fields.add(jfield)
         emitAnnotations(jfield, f.annotations)
+
+        if(f.denot.info.isValhallaValueClassType)
+          cnode.visitLoadableDescriptors(jfield.desc)
       }
 
     } // end of method addClassFields()

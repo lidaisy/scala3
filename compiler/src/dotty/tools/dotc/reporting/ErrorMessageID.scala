@@ -246,6 +246,15 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case AmbiguousTemplateNameID // errorNumber: 228
   case IndentationWarningID // errorNumber: 229
   case IllegalIdentifierID // errorNumber: 230
+  case ValueClassCannotExtendIdentityClassID // errorNumber: 231
+  case ValueClassMustNotExtendTraitWithMutableFieldID // errorNumber: 232
+  case IncorrectValueClassDeclarationID // errorNumber: 233
+  case ValhallaTraitsMayNotHaveSelfTypesWithVarsID // errorNumber: 234
+  case AnyRefClassCantExtendDeepValhallaID // errorNumber: 235
+  case NonDeepValhallaFieldInClassThatExtendsDeepValhallaID // errorNumber: 236
+  case DeepValhallaFieldInstantiatedWithNonDeepValhallaTypeID // errorNumber: 237
+  case DeepValhallaClassExtendsNonDeepValhallaClassID // errorNumber: 238
+  case DeepValhallaClassMustNotExtendParentWithIdentityFieldID // errorNumber: 239
 
   def errorNumber = ordinal - 1
 

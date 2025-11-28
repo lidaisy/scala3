@@ -13,6 +13,7 @@ import tpd.*
 import Annotations.Annotation
 import CaptureSet.VarState
 import Capabilities.*
+import Mutability.isStatefulType
 import StdNames.nme
 import config.Feature
 import NameKinds.TryOwnerName
@@ -394,9 +395,10 @@ extension (tp: Type)
       false
 
   def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
-  def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
+  def derivesFromStateful(using Context): Boolean = derivesFromCapTrait(defn.Caps_Stateful)
   def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
-  def derivesFromExclusive(using Context): Boolean = derivesFromCapTrait(defn.Caps_ExclusiveCapability)
+  def derivesFromUnscoped(using Context): Boolean = derivesFromCapTrait(defn.Caps_Unscoped)
+  def derivesFromMutable(using Context): Boolean = derivesFromCapTrait(defn.Caps_Mutable)
 
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
@@ -529,6 +531,13 @@ extension (cls: ClassSymbol)
         .foldLeft(defn.AnyClass)(leastClassifier)
     else defn.AnyClass
 
+  def isSeparate(using Context): Boolean =
+    cls.derivesFrom(defn.Caps_Separate)
+    || cls.typeRef.isStatefulType
+    || cls.paramGetters.exists: getter =>
+          !getter.is(Private) // Setup makes sure that getters with capture sets are not private
+          && getter.hasAnnotation(defn.ConsumeAnnot)
+
 extension (sym: Symbol)
 
   /** This symbol is one of `retains` or `retainsCap` */
@@ -579,13 +588,16 @@ extension (sym: Symbol)
     && !defn.isPolymorphicAfterErasure(sym)
     && !defn.isTypeTestOrCast(sym)
 
-  /** It's a parameter accessor that is not annotated @constructorOnly or @uncheckedCaptures */
+  /** It's a parameter accessor that is not annotated @constructorOnly or @uncheckedCaptures
+   *  and that is not a consume accessor.
+   */
   def isRefiningParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor)
     && {
       val param = sym.owner.primaryConstructor.paramNamed(sym.name)
       !param.hasAnnotation(defn.ConstructorOnlyAnnot)
       && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
+      && !param.hasAnnotation(defn.ConsumeAnnot)
     }
 
   def hasTrackedParts(using Context): Boolean =

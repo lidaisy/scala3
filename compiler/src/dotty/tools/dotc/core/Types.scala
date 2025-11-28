@@ -30,6 +30,7 @@ import Hashable.*
 import Uniques.*
 import collection.mutable
 import config.Config
+import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion
 import annotation.{tailrec, constructorOnly}
@@ -1964,6 +1965,11 @@ object Types extends TypeUtils {
 
     /** If this is a proto type, WildcardType, otherwise the type itself */
     def dropIfProto: Type = this
+
+    /** If this is a (possibly applied) selection proto type, ignore the
+     *  selection part
+     */
+    def ignoreSelectionProto(using Context): Type = this
 
     /** If this is an AndType, the number of factors, 1 for all other types */
     def andFactorCount: Int = 1
@@ -6283,12 +6289,12 @@ object Types extends TypeUtils {
 
   end BiTypeMap
 
-  /** A typemap that follows aliases and keeps their transformed results if
-  *  there is a change.
-  */
+  /** A typemap that follows non-opaque aliases and keeps their transformed
+   *  results if there is a change.
+   */
   trait FollowAliasesMap(using Context) extends TypeMap:
     def mapFollowingAliases(t: Type): Type =
-      val t1 = t.dealiasKeepAnnots
+      val t1 = t.dealiasKeepAnnotsAndOpaques
       if t1 ne t then
         val t2 = apply(t1)
         if t2 ne t1 then t2
@@ -6411,6 +6417,11 @@ object Types extends TypeUtils {
         mapCapability(c1) match
           case c2: Capability => c2.restrict(cls)
           case (cs: CaptureSet, exact) => (cs.restrict(cls), exact)
+      case ReadOnly(c1) =>
+        assert(!deep)
+        mapCapability(c1) match
+          case c2: Capability => c2.readOnly
+          case (cs: CaptureSet, exact) => (cs.readOnly, exact)
       case Maybe(c1) =>
         assert(!deep)
         mapCapability(c1) match
@@ -6482,10 +6493,13 @@ object Types extends TypeUtils {
           mapCapturingType(tp, parent, refs, variance)
 
         case tp @ AnnotatedType(underlying, annot) =>
-          val underlying1 = this(underlying)
-          val annot1 = annot.mapWith(this)
-          if annot1 eq EmptyAnnotation then underlying1
-          else derivedAnnotatedType(tp, underlying1, annot1)
+          if annot.symbol.isRetainsLike && !Feature.ccEnabledSomewhere then
+            this(underlying) // strip retains like annotations unless capture checking is enabled
+          else
+            val underlying1 = this(underlying)
+            val annot1 = annot.mapWith(this)
+            if annot1 eq EmptyAnnotation then underlying1
+            else derivedAnnotatedType(tp, underlying1, annot1)
 
         case _: ThisType
           | _: BoundType

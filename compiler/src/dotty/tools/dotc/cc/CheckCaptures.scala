@@ -21,7 +21,7 @@ import util.chaining.tap
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IncludeFailure, MutAdaptFailure}
+import CaptureSet.{withCaptureSetsExplained, IncludeFailure, MutAdaptFailure, VarState}
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
@@ -40,7 +40,7 @@ object CheckCaptures:
   val name: String = "cc"
   val description: String = "capture checking"
 
-  enum EnvKind:
+  enum EnvKind derives CanEqual:
     case Regular        // normal case
     case NestedInOwner  // environment is a temporary one nested in the owner's environment,
                         // and does not have a different actual owner symbol
@@ -572,7 +572,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def checkReadOnlyMethod(included: CaptureSet, meth: Symbol): Unit =
         included.checkAddedElems: elem =>
-          if elem.isExclusive then
+          if elem.isExclusive() then
             report.error(
                 em"""Read-only $meth accesses exclusive capability $elem;
                     |$meth should be declared an update method to allow this.""",
@@ -597,7 +597,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             if nextEnv != null && !nextEnv.owner.isStaticOwner then
               if nextEnv.owner != env.owner
                   && env.owner.isReadOnlyMember
-                  && env.owner.owner.derivesFrom(defn.Caps_Mutable)
+                  && env.owner.owner.derivesFrom(defn.Caps_Stateful)
               then
                 checkReadOnlyMethod(included, env.owner)
               recur(included, nextEnv, env)
@@ -790,22 +790,29 @@ class CheckCaptures extends Recheck, SymTransformer:
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
 
-    /** Recheck applications, with special handling of unsafeAssumePure.
+    /** Recheck `caps.unsafe.unsafeAssumePure(...)` */
+    def applyAssumePure(tree: Apply, pt: Type)(using Context): Type =
+      val arg :: Nil = tree.args: @unchecked
+      val argType0 = recheck(arg, pt.stripCapturing.capturing(FreshCap(Origin.UnsafeAssumePure)))
+      val argType =
+        if argType0.captureSet.isAlwaysEmpty then argType0
+        else argType0.widen.stripCapturing
+      capt.println(i"rechecking unsafeAssumePure of $arg with $pt: $argType")
+      super.recheckFinish(argType, tree, pt)
+
+    /** Recheck applications, with special handling of unsafeAssumePure,
+     *  unsafeDiscardUses, and freeze.
      *  More work is done in `recheckApplication`, `recheckArg` and `instantiate` below.
      */
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val meth = tree.fun.symbol
       if meth == defn.Caps_unsafeAssumePure then
-        val arg :: Nil = tree.args: @unchecked
-        val argType0 = recheck(arg, pt.stripCapturing.capturing(FreshCap(Origin.UnsafeAssumePure)))
-        val argType =
-          if argType0.captureSet.isAlwaysEmpty then argType0
-          else argType0.widen.stripCapturing
-        capt.println(i"rechecking unsafeAssumePure of $arg with $pt: $argType")
-        super.recheckFinish(argType, tree, pt)
+        applyAssumePure(tree, pt)
       else if meth == defn.Caps_unsafeDiscardUses then
         val arg :: Nil = tree.args: @unchecked
         withDiscardedUses(recheck(arg, pt))
+      else if meth == defn.Caps_freeze then
+        freeze(super.recheckApply(tree, pt), tree.srcPos)
       else
         val res = super.recheckApply(tree, pt)
         includeCallCaptures(meth, res, tree)
@@ -864,6 +871,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             && !resultType.isBoxedCapturing
             && !tree.fun.symbol.isConstructor
             && !resultType.captureSet.containsResultCapability
+            && !resultType.captureSet.elems.exists(_.derivesFromUnscoped)
             && qualCaptures.mightSubcapture(refs)
             && argCaptures.forall(_.mightSubcapture(refs)) =>
           val callCaptures = argCaptures.foldLeft(qualCaptures)(_ ++ _)
@@ -916,7 +924,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           val getter = cls.info.member(getterName).suchThat(_.isRefiningParamAccessor).symbol
           if !getter.is(Private) && getter.hasTrackedParts then
             refined = refined.refinedOverride(getterName, argType.unboxed) // Yichen you might want to check this
-            allCaptures ++= argType.captureSet
+            if getter.hasAnnotation(defn.ConsumeAnnot) then
+              () // We make sure in checkClassDef, point (6), that consume parameters don't
+                 // contribute to the class capture set
+            else allCaptures ++= argType.captureSet
         (refined, allCaptures)
 
       /** Augment result type of constructor with refinements and captures.
@@ -939,21 +950,26 @@ class CheckCaptures extends Recheck, SymTransformer:
         .showing(i"constr type $mt with $argTypes%, % in $constr = $result", capt)
     end refineConstructorInstance
 
-    /** If `mbr` is a field that has (possibly restricted) FreshCaps in its span capture set,
-     *  their classifiers, otherwise the empty list.
-     */
-    private def classifiersOfFreshInType(mbr: Symbol)(using Context): List[ClassSymbol] =
+    private def memberCaps(mbr: Symbol)(using Context): List[Capability] =
       if contributesFreshToClass(mbr) then
         mbr.info.spanCaptureSet.elems
           .filter(_.isTerminalCapability)
           .toList
-          .map(_.classifier.asClass)
       else Nil
+
+    /** If `mbr` is a field that has (possibly restricted) FreshCaps in its span capture set,
+     *  their classifiers, otherwise the empty list.
+     */
+    private def classifiersOfFreshInType(mbr: Symbol)(using Context): List[ClassSymbol] =
+      memberCaps(mbr).map(_.classifier.asClass)
+
+    private def allFreshInTypeAreRO(mbr: Symbol)(using Context): Boolean =
+      memberCaps(mbr).forall(_.isReadOnly)
 
     /** The additional capture set implied by the capture sets of its fields. This
      *  is either empty or, if some fields have a terminal capability in their span
      *  capture sets, it consists of a single fresh cap that subsumes all these terminal
-     *  capabiltities. Class parameters are not counted. If the type is a mutable type,
+     *  capabiltities. Class parameters are not counted. If the type extends Separate,
      *  we add a fresh cap in any case -- this is because we can currently hide
      *  mutability in array vals, an example is neg-customargs/captures/matrix.scala.
      */
@@ -962,16 +978,16 @@ class CheckCaptures extends Recheck, SymTransformer:
       def pushInfo(msg: => String) =
         if ctx.settings.YccVerbose.value then infos = msg :: infos
 
+      def knownFields(cls: ClassSymbol) =
+        setup.fieldsWithExplicitTypes             // pick fields with explicit types for classes in this compilation unit
+          .getOrElse(cls, cls.info.decls.toList)  // pick all symbols in class scope for other classes
+
       /** The classifiers of the fresh caps in the span capture sets of all fields
        *  in the given class `cls`.
        */
       def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
         case cls: ClassSymbol =>
-          var fieldClassifiers = setup.fieldsWithExplicitTypes // pick fields with explicit types for classes in this compilation unit
-              .getOrElse(cls, cls.info.decls.toList)           // pick all symbols in class scope for other classes
-              .flatMap(classifiersOfFreshInType)
-          if cls.typeRef.isMutableType then
-            fieldClassifiers = cls.classifier :: fieldClassifiers
+          var fieldClassifiers = knownFields(cls).flatMap(classifiersOfFreshInType)
           val parentClassifiers =
             cls.parentSyms.map(impliedClassifiers).filter(_.nonEmpty)
           if fieldClassifiers.isEmpty && parentClassifiers.isEmpty
@@ -979,19 +995,32 @@ class CheckCaptures extends Recheck, SymTransformer:
           else parentClassifiers.foldLeft(fieldClassifiers.distinct)(dominators)
         case _ => Nil
 
+      def impliedReadOnly(cls: Symbol): Boolean = cls match
+        case cls: ClassSymbol =>
+          val fieldsRO = knownFields(cls).forall(allFreshInTypeAreRO)
+          val parentsRO = cls.parentSyms.forall(impliedReadOnly)
+          fieldsRO && parentsRO
+        case _ =>
+          false
+
+      def maybeRO(ref: Capability) =
+        if !cls.isSeparate && impliedReadOnly(cls) then ref.readOnly else ref
+
       def fresh =
         FreshCap(Origin.NewInstance(core)).tap: fresh =>
           if ctx.settings.YccVerbose.value then
             pushInfo(i"Note: instance of $cls captures a $fresh that comes from a field")
             report.echo(infos.mkString("\n"), ctx.owner.srcPos)
 
-      knownFresh.getOrElseUpdate(cls, impliedClassifiers(cls)) match
+      var implied = impliedClassifiers(cls)
+      if cls.isSeparate then implied = dominators(cls.classifier :: Nil, implied)
+      knownFresh.getOrElseUpdate(cls, implied) match
         case Nil => CaptureSet.empty
         case cl :: Nil =>
           val result = fresh
           result.hiddenSet.adoptClassifier(cl)
-          result.singletonCaptureSet
-        case _ => fresh.singletonCaptureSet
+          maybeRO(result).singletonCaptureSet
+        case _ => maybeRO(fresh).singletonCaptureSet
     end captureSetImpliedByFields
 
     /** Recheck type applications:
@@ -1143,10 +1172,10 @@ class CheckCaptures extends Recheck, SymTransformer:
                 tree.tpt.nuType, NoSymbol, i"Mutable $sym", "have type", addendum, sym.srcPos)
             if ccConfig.noUnsafeMutableFields
                 && sym.owner.isClass
-                && !sym.owner.derivesFrom(defn.Caps_Mutable)
+                && !sym.owner.derivesFrom(defn.Caps_Stateful)
                 && !sym.hasAnnotation(defn.UntrackedCapturesAnnot) then
               report.error(
-                em"""Mutable $sym is defined in a class that does not extend `Mutable`.
+                em"""Mutable $sym is defined in a class that does not extend `Stateful`.
                     |The variable needs to be annotated with `untrackedCaptures` to allow this.""",
                 tree.namePos)
 
@@ -1355,29 +1384,39 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Recheck classDef by enforcing the following class-specific capture set relations:
      *   1. The capture set of a class includes the capture sets of its parents.
      *   2. The capture set of the self type of a class includes the capture set of the class.
-     *   3. The capture set of the self type of a class includes the capture set of every class parameter,
-     *      unless the parameter is marked @constructorOnly or @untrackedCaptures.
+     *   3. The capture set of the self type of a class includes the capture set of every class
+     *      parameter, unless the parameter is marked @constructorOnly or @untrackedCaptures.
      *   4. If the class extends a pure base class, the capture set of the self type must be empty.
-     *  Also, check that trait parents represented as applied types don't have cap in their
-     *  type arguments. Other generic parents are represented as TypeApplys, where the same check
-     *  is already done in the TypeApply.
+     *   5. Check that trait parents represented as applied types don't have cap in their
+     *      type arguments. Charge deep capture sets of type arguments to non-reserved typevars
+     *      to the environment. Other generic parents are represented as TypeApplys, where the
+     *      same check is already done in the TypeApply.
      */
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
       if Feature.enabled(Feature.separationChecking) then sepChecksEnabled = true
       val localSet = capturedVars(cls)
+
+      // (1) Capture set of a class includes the capture sets of its parents
       for parent <- impl.parents do // (1)
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
           i"\nof the references allowed to be captured by $cls")
+
       val saved = curEnv
       curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
       try
+        // (2) Capture set of self type includes capture set of class
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
-        checkSubset(localSet, thisSet, tree.srcPos) // (2)
+        checkSubset(localSet, thisSet, tree.srcPos)
+
+        // (3) Capture set of self type includes capture sets of parameters
         for param <- cls.paramGetters do
           if !param.hasAnnotation(defn.ConstructorOnlyAnnot)
-              && !param.hasAnnotation(defn.UntrackedCapturesAnnot) then
+              && !param.hasAnnotation(defn.UntrackedCapturesAnnot)
+          then
             withCapAsRoot: // OK? We need this here since self types use `cap` instead of `fresh`
-              checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
+              checkSubset(param.termRef.captureSet, thisSet, param.srcPos)
+
+        // (4) If class extends Pure, capture set of self type is empty
         for pureBase <- cls.pureBaseClass do // (4)
           def selfTypeTree = impl.body
             .collect:
@@ -1388,15 +1427,19 @@ class CheckCaptures extends Recheck, SymTransformer:
           checkSubset(thisSet,
             CaptureSet.empty.withDescription(i"of pure base class $pureBase"),
             selfTypeTree.srcPos, cs1description = " captured by this self type")
+
+        // (5) Check AppliedType parents
         for case tpt: TypeTree <- impl.parents do
           tpt.tpe match
             case AppliedType(fn, args) =>
               markFreeTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
             case _ =>
+
         super.recheckClassDef(tree, impl, cls)
       finally
         completed += cls
         curEnv = saved
+    end recheckClassDef
 
     /** If type is of the form `T @requiresCapability(x)`,
      *  mark `x` as free in the current environment. This is used to require the
@@ -1800,7 +1843,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         if needsAdaptation && !insertBox then // we are unboxing
           val criticalSet =          // the set with which we unbox
             if covariant then
-              if expected.expectsReadOnly && actual.derivesFromMutable
+              if expected.expectsReadOnly && actual.derivesFromStateful
               then captures.readOnly
               else captures
             else expected.captureSet     // contravarant: we unbox with captures of epected type
@@ -2175,29 +2218,28 @@ class CheckCaptures extends Recheck, SymTransformer:
       end for
     end checkEscapingUses
 
-    /** Check all parent class constructors of classes extending Mutable
-     *  either also extend Mutable or are read-only.
+    /** Check all parent class constructors of classes extending Stateful
+     *  either also extend Stateful or are read-only.
      *
      *  A parent class constructor is _read-only_ if the following conditions are met
      *   1. The class does not retain any exclusive capabilities from its environment.
      *   2. The constructor does not take arguments that retain exclusive capabilities.
      *   3. The class does not does not have fields that retain exclusive universal capabilities.
      */
-    def checkMutableInheritance(cls: ClassSymbol, parents: List[Tree])(using Context): Unit =
-      if cls.derivesFrom(defn.Caps_Mutable) then
+    def checkStatefulInheritance(cls: ClassSymbol, parents: List[Tree])(using Context): Unit =
+      if cls.derivesFrom(defn.Caps_Stateful) then
         for parent <- parents do
-          if !parent.tpe.derivesFromMutable then
+          if !parent.tpe.derivesFromStateful then
             val pcls = parent.nuType.classSymbol
             val parentIsExclusive =
               if parent.isType then
-                capturedVars(pcls).isExclusive
-                || captureSetImpliedByFields(pcls.asClass, parent.nuType).isExclusive
-
-              else parent.nuType.captureSet.isExclusive
+                capturedVars(pcls).isExclusive()
+                || captureSetImpliedByFields(pcls.asClass, parent.nuType).isExclusive()
+              else parent.nuType.captureSet.isExclusive()
             if parentIsExclusive then
               report.error(
-                em"""illegal inheritance: $cls which extends `Mutable` is not allowed to also extend $pcls
-                    |since $pcls retains exclusive capabilities but does not extend `Mutable`.""",
+                em"""illegal inheritance: $cls which extends `Stateful` is not allowed to also extend $pcls
+                    |since $pcls retains exclusive capabilities but does not extend `Stateful`.""",
                 parent.srcPos)
 
     /** Checks to run after the rechecking pass:
@@ -2205,8 +2247,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - Check that no uses refer to reach capabilities of parameters of enclosing
      *     methods or classes.
      *   - Run the separation checker under language.experimental.separationChecking
-     *   - Check that classes extending Mutable do not extend other classes that do
-     *     not extend Mutable yet retain exclusive capabilities
+     *   - Check that classes extending Stateful do not extend other classes that do
+     *     not extend Stateful yet retain exclusive capabilities
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
       val checker = new TreeTraverser:
@@ -2231,7 +2273,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   args.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
               case _ =>
           case TypeDef(_, impl: Template) =>
-            checkMutableInheritance(tree.symbol.asClass, impl.parents)
+            checkStatefulInheritance(tree.symbol.asClass, impl.parents)
           case _ =>
       end checker
 

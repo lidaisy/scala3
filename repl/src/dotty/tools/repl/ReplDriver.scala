@@ -34,7 +34,7 @@ import dotc.util.{SourceFile, SourcePosition}
 import dotc.{CompilationUnit, Driver}
 import dotc.config.CompilerCommand
 import dotty.tools.io.{AbstractFileClassLoader => _, *}
-import dotty.tools.runner.ScalaClassLoader.*
+import dotty.tools.repl.ScalaClassLoader.*
 
 import org.jline.reader.*
 
@@ -504,9 +504,7 @@ class ReplDriver(settings: Array[String],
           val formattedTypeDefs =  // don't render type defs if wrapper initialization failed
             if newState.invalidObjectIndexes.contains(state.objectIndex) then Seq.empty
             else typeDefs(wrapperModule.symbol)
-          val highlighted = (formattedTypeDefs ++ formattedMembers)
-            .map(d => new Diagnostic(d.msg.mapMsg(SyntaxHighlighting.highlight), d.pos, d.level))
-          (newState, highlighted)
+          (newState, formattedTypeDefs ++ formattedMembers)
         }
         .getOrElse {
           // user defined a trait/class/object, so no module needed
@@ -609,7 +607,7 @@ class ReplDriver(settings: Array[String],
             rendering.myClassLoader = new AbstractFileClassLoader(
               prevOutputDir,
               jarClassLoader,
-              ctx.settings.XreplInterruptInstrumentation.value
+              AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
             )
 
             out.println(s"Added '$path' to classpath.")

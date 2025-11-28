@@ -59,7 +59,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.0-RC1"
+  val referenceVersion = "3.8.0-RC2"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -198,12 +198,12 @@ object Build {
       "-encoding", "UTF8",
       "-language:implicitConversions",
       s"--java-output-version:${Versions.minimumJVMVersion}",
-      "-Yexplicit-nulls", 
+      "-Yexplicit-nulls",
       "-Wsafe-init"
     ),
 
     (Compile / compile / javacOptions) ++= Seq(
-      "-Xlint:unchecked", 
+      "-Xlint:unchecked",
       "-Xlint:deprecation",
       "--release", Versions.minimumJVMVersion
     ),
@@ -447,6 +447,39 @@ object Build {
       "-default-template", "static-site-main"
     ) ++ extMap
   }
+
+  val enableBspAllProjects = sys.env.get("ENABLE_BSP_ALL_PROJECTS").map(_.toBoolean).getOrElse{
+    val enableBspAllProjectsFile = file(".enable_bsp_all_projects")
+    enableBspAllProjectsFile.exists()
+  }
+
+  // Setups up doc / scalaInstance to use in the bootstrapped projects instead of the default one
+  lazy val scaladocDerivedInstanceSettings = Def.settings(
+    // We cannot include scaladoc in the regular `scalaInstance` task because
+    // it's a bootstrapped-only project, so we would run into a loop since we
+    // need the output of that task to compile scaladoc. But we can include it
+    // in the `scalaInstance` of the `doc` task which allows us to run
+    // `scala3-library-bootstrapped/doc` for example.
+    doc / scalaInstance := {
+      val externalDeps = (LocalProject("scaladoc-new") / Compile / externalDependencyClasspath).value.map(_.data)
+      val scalaDoc = (LocalProject("scaladoc-new") / Compile / packageBin).value
+      val docJars = Array(scalaDoc) ++ externalDeps
+
+      val base = scalaInstance.value
+      val docScalaInstance = Defaults.makeScalaInstance(
+        version = base.version,
+        libraryJars = base.libraryJars,
+        allCompilerJars = base.compilerJars,
+        allDocJars = docJars,
+        state.value,
+        scalaInstanceTopLoader.value
+      )
+      // assert that sbt reuses the same compiler class loader
+      assert(docScalaInstance.loaderCompilerOnly == base.loaderCompilerOnly)
+      docScalaInstance
+    },
+    Compile / doc / scalacOptions ++= scalacOptionsDocSettings(),
+  )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
@@ -931,7 +964,7 @@ object Build {
         ),
       // Packaging configuration of `scala3-sbt-bridge`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -963,6 +996,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -981,7 +1015,7 @@ object Build {
       moduleName    := "scala3-staging",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scala3-staging has a crosspath
       autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-bootstrapped`
       // Add the source directories for the sbt-bridge (boostrapped)
@@ -989,12 +1023,13 @@ object Build {
       Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "test"),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
       publish / skip := false,
       // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
@@ -1017,6 +1052,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1035,7 +1071,7 @@ object Build {
       moduleName    := "scala3-tasty-inspector",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scala3-tasty-inspector has a crosspath
       autoScalaLibrary := false, // do not add a dependency to stdlib, we depend transitively on the stdlib from `scala3-compiler-bootstrapped`
       // Add the source directories for the sbt-bridge (boostrapped)
@@ -1044,12 +1080,13 @@ object Build {
       // Make sure that the produced artifacts have the minimum JVM version in the bytecode
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
       publish / skip := false,
       // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
@@ -1072,6 +1109,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1086,7 +1124,7 @@ object Build {
       moduleName    := "scala3-repl",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true,
       autoScalaLibrary := false,
       // Add the source directories for the sbt-bridge (boostrapped)
@@ -1096,7 +1134,7 @@ object Build {
       Test    / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       // Packaging configuration of `scala3-staging`
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1113,6 +1151,7 @@ object Build {
         "org.virtuslab" % "using_directives" % "1.1.4", // used by the REPL for parsing magic comments
       ),
       // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
@@ -1135,6 +1174,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1171,8 +1211,9 @@ object Build {
         //val classpath = s"-classpath ${(`scala-library-bootstrapped` / Compile / packageBin).value}"
         // TODO: We should use the val above instead of `-usejavacp` below. SBT crashes we we have a val and we call toTask
         // with it as a parameter. THIS IS NOT A LEGIT USE CASE OF THE `-usejavacp` FLAG.
-        (Compile / run).toTask(" -usejavacp").value
+        (Compile / run).partialInput(" -usejavacp").evaluated
       },
+      bspEnabled := false,
     )
 
   // ==============================================================================================
@@ -1221,7 +1262,8 @@ object Build {
       // Should we also patch .sjsir files
       keepSJSIR := false,
       // Generate library.properties, used by scala.util.Properties
-      Compile / resourceGenerators += generateLibraryProperties.taskValue
+      Compile / resourceGenerators += generateLibraryProperties.taskValue,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-nonbootstrapped project */
@@ -1251,6 +1293,8 @@ object Build {
       Test / doc     := (`scala-library-nonbootstrapped` / Test / doc).value,
       Test / run     := (`scala-library-nonbootstrapped` / Test / run).evaluated,
       Test / test    := (`scala-library-nonbootstrapped` / Test / test).value,
+      // Claim that the classes generated by this project are the same as the one we get from `scala-library-nonbootstrapped`
+      Compile / classDirectory := (`scala-library-nonbootstrapped` / Compile / classDirectory).value,
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1261,7 +1305,7 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-nonbootstrapped",
-      bspEnabled := false,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala-library:*.**.**-bootstrapped project */
@@ -1281,7 +1325,7 @@ object Build {
       versionScheme := Some("always"),
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := false, // org.scala-lang:scala-library doesn't have a crosspath
       autoScalaLibrary     := false, // DO NOT DEPEND ON THE STDLIB, IT IS THE STDLIB
       // Add the source directories for the stdlib (non-boostrapped)
@@ -1294,7 +1338,7 @@ object Build {
       ),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1327,6 +1371,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1339,7 +1384,8 @@ object Build {
       keepSJSIR := false,
       // Generate Scala 3 runtime properties overlay
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_3:*.**.**-bootstrapped project */
@@ -1353,7 +1399,7 @@ object Build {
       versionScheme := Some("semver-spec"),
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scala3-library has a crosspath
       // Do not depend on the `org.scala-lang:scala3-library` automatically, we manually depend on `scala-library-bootstrapped`
       autoScalaLibrary := false,
@@ -1371,6 +1417,8 @@ object Build {
       Test / compile := (`scala-library-bootstrapped` / Test / compile).value,
       Test / doc     := (`scala-library-bootstrapped` / Test / doc).value,
       Test / run     := (`scala-library-bootstrapped` / Test / run).evaluated,
+      // Claim that the classes generated by this project are the same as the one we get from `scala-library-bootstrapped`
+      Compile / classDirectory := (`scala-library-bootstrapped` / Compile / classDirectory).value,
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
       Compile / packageDoc / publishArtifact := false,
@@ -1381,7 +1429,8 @@ object Build {
       publish / skip := false,
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library-bootstrapped",
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-js:scalajs-scalalib_2.13:*.**.**-bootstrapped project */
@@ -1411,7 +1460,7 @@ object Build {
       crossVersion  := CrossVersion.disabled,
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories ++=
@@ -1429,7 +1478,7 @@ object Build {
       },
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1490,6 +1539,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1511,6 +1561,7 @@ object Build {
       // Should we also patch .sjsir files
       keepSJSIR := true,
       bspEnabled := false,
+      mainClass := None,
     )
 
   /* Configuration of the org.scala-lang:scala3-library_sjs1_3:*.**.**-bootstrapped project */
@@ -1524,7 +1575,7 @@ object Build {
       versionScheme := Some("semver-spec"),
       // sbt defaults to scala 2.12.x and metals will report issues as it doesn't consider the project a scala 3 project
       // (not the actual version we use to compile the project)
-      scalaVersion  := referenceVersion,
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scala3-library_sjs1 has a crosspath
       // Do not depend on the `org.scala-lang:scala3-library` automatically, we manually depend on `scala-library-bootstrapped`
       autoScalaLibrary := false,
@@ -1553,6 +1604,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "scala3-library",
       bspEnabled := false,
+      mainClass := None,
     )
 
   // ==============================================================================================
@@ -1626,7 +1678,7 @@ object Build {
       moduleName    := "tasty-core",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:tasty-core has a crosspath
       // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
       autoScalaLibrary := false,
@@ -1640,7 +1692,7 @@ object Build {
       ),
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1649,6 +1701,7 @@ object Build {
       // Project specific target folder. sbt doesn't like having two projects using the same target folder
       target := target.value / "tasty-core-bootstrapped",
       // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
@@ -1671,6 +1724,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1696,7 +1750,7 @@ object Build {
       moduleName    := "scala3-compiler",
       version       := dottyNonBootstrappedVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := dottyNonBootstrappedVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
       crossPaths    := true, // org.scala-lang:scala3-compiler has a crosspath
       // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
       autoScalaLibrary := false,
@@ -1839,7 +1893,7 @@ object Build {
       moduleName    := "scala3-compiler",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scala3-compiler has a crosspath
       // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
       autoScalaLibrary := false,
@@ -1863,7 +1917,7 @@ object Build {
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)), // Used by the REPL
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1897,6 +1951,7 @@ object Build {
           scalaInstanceTopLoader.value
         )
       },
+      scaladocDerivedInstanceSettings,
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
@@ -1974,7 +2029,7 @@ object Build {
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
 
   // ==============================================================================================
@@ -1990,7 +2045,7 @@ object Build {
       moduleName    := "scaladoc",
       version       := dottyVersion,
       versionScheme := Some("semver-spec"),
-      scalaVersion  := referenceVersion, // nonbootstrapped artifacts are compiled with the reference compiler (already officially published)
+      scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scaladoc has a crosspath
       // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
       autoScalaLibrary := false,
@@ -2011,7 +2066,7 @@ object Build {
       Compile / scalacOptions += "-experimental",
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -2024,6 +2079,8 @@ object Build {
       BuildInfoPlugin.buildInfoScopedSettings(Compile),
       BuildInfoPlugin.buildInfoDefaultSettings,
       // Configure to use the non-bootstrapped compiler
+      managedScalaInstance := false,
+      scaladocDerivedInstanceSettings,
       scalaInstance := {
         val externalCompilerDeps = (`scala3-compiler-nonbootstrapped` / Compile / externalDependencyClasspath).value.map(_.data).toSet
 
@@ -2049,7 +2106,7 @@ object Build {
       scalaCompilerBridgeBinaryJar := {
         Some((`scala3-sbt-bridge-nonbootstrapped` / Compile / packageBin).value)
       },
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
@@ -2120,13 +2177,16 @@ object Build {
           mtagsSharedSources
         } (Set(mtagsSharedSourceJar)).toSeq
       }.taskValue,
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
   }
 
   lazy val `scala3-presentation-compiler-testcases` = project.in(file("presentation-compiler-testcases"))
     .dependsOn(`scala3-compiler-bootstrapped-new`)
-    .settings(commonBootstrappedSettings)
+    .settings(
+      commonBootstrappedSettings,
+      bspEnabled := enableBspAllProjects,
+    )
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
     dependsOn(`scala3-compiler-bootstrapped-new`, `scala3-repl`).
@@ -2219,6 +2279,7 @@ object Build {
       Test / fork := false,
 
       scalaJSUseMainModuleInitializer := true,
+      bspEnabled := false,
     )
 
   /** Scala.js test suite.

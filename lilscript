@@ -1,6 +1,0 @@
-mkdir -p tests/valhalla/bin
-scalac -cp library/target/scala-library-nonbootstrapped/scala-library-3.8.0-RC1-bin-SNAPSHOT-nonbootstrapped.jar -d tests/valhalla/bin --Yvalue-classes tests/valhalla/Object.scala
-echo "Compiled successfully."
-echo "Running Program."
-./../valhalla/build/*/images/jdk/bin/java -cp library/target/scala-library-nonbootstrapped/scala-library-3.8.0-RC1-bin-SNAPSHOT-nonbootstrapped.jar:tests/valhalla/bin --enable-preview Main
-./../valhalla/build/*/images/jdk/bin/javap -c -v -p tests/valhalla/bin/A.class

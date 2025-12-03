@@ -34,6 +34,11 @@ class CollectSuperCalls extends MiniPhase {
     tree
   }
 
+  override def transformAssign(tree: Assign)(using Context): Tree = {
+    println(tree.asInstanceOf[Assign].rhs)
+    super.transformAssign(tree)
+  }
+
   private def registerSuperCall(sym: ClassSymbol, calls: ClassSymbol)(using Context) = {
     genBCodePhase match {
       case genBCodePhase: GenBCode =>

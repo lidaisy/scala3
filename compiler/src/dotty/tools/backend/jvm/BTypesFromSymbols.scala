@@ -319,5 +319,6 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
       .addFlagIf(sym.hasAnnotation(TransientAttr), ACC_TRANSIENT)
       .addFlagIf(sym.hasAnnotation(VolatileAttr), ACC_VOLATILE)
       .addFlagIf(!sym.is(Mutable), ACC_FINAL)
+      .addFlagIf(sym.denot.owner.isValhallaValueClass, ACC_STRICT)
   }
 }

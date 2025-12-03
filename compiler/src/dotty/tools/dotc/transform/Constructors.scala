@@ -353,7 +353,11 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       case _ => false
     }
 
-    val finalConstrStats = copyParams ::: mappedSuperCalls ::: lazyAssignments ::: stats
+    val finalConstrStats =
+      if tree.symbol.denot.owner.isValhallaValueClass then
+        copyParams ::: lazyAssignments ::: stats ::: mappedSuperCalls
+      else
+        copyParams ::: mappedSuperCalls ::: lazyAssignments ::: stats
     val expandedConstr =
       if (cls.isAllOf(NoInitsTrait)) {
         assert(finalConstrStats.isEmpty || {

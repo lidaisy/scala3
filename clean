@@ -1,0 +1,2 @@
+cd tests/valhalla/bin
+rm *.class *.tasty

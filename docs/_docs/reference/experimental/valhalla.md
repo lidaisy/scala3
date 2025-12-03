@@ -40,6 +40,11 @@ import scala.annotation.valhalla
   val y: Int = 5
 ```
 
+## Strict Initialization of Fields
+
+Valhalla value classes and traits cannot have
+
+
 ## Using Explicit Self with Valhalla
 
 ```scala

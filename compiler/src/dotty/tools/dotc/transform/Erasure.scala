@@ -463,7 +463,7 @@ object Erasure {
        *  will throw a `NullPointerException` instead. See `lambda-null.scala`
        *  for test cases.
        *
-       *  @see [LambdaMetaFactory](https://docs.oracle.com/javase/8/docs/api/java/lang/invoke/LambdaMetafactory.html)
+       *  @see [LambdaMetaFactory](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/invoke/LambdaMetafactory.html)
        */
       def autoAdaptedParam(tp: Type) =
         !tp.isErasedValueType && !tp.isPrimitiveValueType
@@ -483,7 +483,9 @@ object Erasure {
 
       val paramAdaptationNeeded =
         implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
-          !sameClass(implType, samType) && !autoAdaptedParam(implType))
+          !sameClass(implType, samType) && (!autoAdaptedParam(implType)
+            // LambdaMetaFactory cannot auto-adapt between Object and Array types
+            || samType.isInstanceOf[JavaArrayType]))
       val resultAdaptationNeeded =
         !sameClass(implResultType, samResultType) && !autoAdaptedResult
 
@@ -561,15 +563,15 @@ object Erasure {
           report.error(msg, tree.srcPos)
         tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match
           case Some(annot) =>
-            val message = annot.argumentConstant(0) match
-              case Some(c) =>
+            val message = annot.argumentConstantString(0) match
+              case Some(msg) =>
                 val addendum = tree match
                   case tree: RefTree
                   if tree.symbol == defn.Compiletime_deferred && tree.name != nme.deferred =>
                     i".\nNote that `deferred` can only be used under its own name when implementing a given in a trait; `${tree.name}` is not accepted."
                   case _ =>
                     ""
-                (c.stringValue ++ addendum).toMessage
+                (msg + addendum).toMessage
               case _ =>
                 em"""Reference to ${tree.symbol.showLocated} should not have survived,
                     |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""

@@ -550,10 +550,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
             || parent1.isSingleton && refs1.elems.forall(parent1 eq _)
           then
+            def remainsBoxed1 = parent1.isBoxedCapturing || parent1.dealias.match
+              case parent1: TypeRef =>
+                parent1.superType.isBoxedCapturing
+                // When comparing a type parameter with boxed upper bound on the left
+                // we should not strip the box on the right. See i24543.scala.
+              case _ =>
+                false
             val tp2a =
-              if tp1.isBoxedCapturing && !parent1.isBoxedCapturing
-              then tp2.unboxed
-              else tp2
+              if tp1.isBoxedCapturing && !remainsBoxed1 then tp2.unboxed else tp2
             recur(parent1, tp2a)
           else thirdTry
         compareCapturing
@@ -994,7 +999,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             (sym1 eq NullClass) && isNullable(tp2)
         }
       case tp1 @ AppliedType(tycon1, args1) =>
-        compareAppliedType1(tp1, tycon1, args1)
+        // Special case: Java arrays are covariant.
+        // When checking overrides (frozenConstraint) of Java methods, allow B[] <: A[] if B <: A.
+        def checkJavaArrayCovariance: Boolean = tp2 match {
+          case AppliedType(tycon2, arg2 :: Nil)
+            if frozenConstraint
+              && tycon1.typeSymbol == defn.ArrayClass
+              && tycon2.typeSymbol == defn.ArrayClass
+              && args1.length == 1 =>
+            // Arrays are covariant in Java: B[] <: A[] if B <: A
+            isSubType(args1.head, arg2)
+          case _ => false
+        }
+        (checkJavaArrayCovariance && ctx.property(ComparingJavaMethods).isDefined)
+            || compareAppliedType1(tp1, tycon1, args1)
       case tp1: SingletonType =>
         def comparePaths = tp2 match
           case tp2: (TermRef | ThisType) =>
@@ -2915,7 +2933,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         case _ =>
     subc
     && (tp1.isBoxedCapturing == tp2.isBoxedCapturing
-        || refs1.subCaptures(CaptureSet.empty, makeVarState()))
+        || refs1.subCaptures(CaptureSet.EmptyOfBoxed(tp1, tp2), makeVarState()))
 
   protected def logUndoAction(action: () => Unit) =
     undoLog += action
@@ -3356,6 +3374,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 }
 
 object TypeComparer {
+
+  import util.Property
+
+  /** A property key to indicate we're comparing Java-defined methods.
+   *  When it is set, arrays are treated as covariant for override checking.
+   */
+  val ComparingJavaMethods = new Property.Key[Unit]
 
   /** A richer compare result, returned by `testSubType` and `test`. */
   enum CompareResult:

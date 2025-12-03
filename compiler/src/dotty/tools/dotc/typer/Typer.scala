@@ -4175,7 +4175,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           Some(adapt(tree, pt, locked))
         else
           val selProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false, tree.nameSpan)
-          if selProto.isMatchedBy(qual.tpe) || tree.hasAttachment(InsertedImplicitOnQualifier) then
+          if selProto.isMatchedBy(qual.tpe, keepConstraint = false) || tree.hasAttachment(InsertedImplicitOnQualifier)
+          then
             None
           else
             tryEither {
@@ -4473,12 +4474,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             def argHasDefault = hasDefaultParams && !defaultArg.isEmpty
 
             def canProfitFromMoreConstraints =
+              !ctx.mode.is(Mode.ImplicitExploration)
+              && {
               arg.tpe.isInstanceOf[AmbiguousImplicits]
                     // Ambiguity could be decided by more constraints
               || !isFullyDefined(formal, ForceDegree.none) && !argHasDefault
                     // More context might constrain type variables which could make implicit scope larger.
                     // But in this case we should search with additional arguments typed only if there
                     // is no default argument.
+              }
 
             // Try to constrain the result using `pt1`, but back out if a BadTyperStateAssertion
             // is thrown. TODO Find out why the bad typer state arises and prevent it. The try-catch
@@ -4492,7 +4496,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             arg.tpe match
               case failed: SearchFailureType if canProfitFromMoreConstraints =>
                 val pt1 = pt.deepenProtoTrans
-                if (pt1 `ne` pt) && (pt1 ne sharpenedPt) && tryConstrainResult(pt1) then
+                if (pt1 ne pt) && (pt1 ne sharpenedPt) && tryConstrainResult(pt1) then
                   return implicitArgs(formals, argIndex, pt1)
               case _ =>
 
@@ -4585,11 +4589,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               issueErrors(tree, args, failureType)
             else
               val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
-              // old-style implicit needs to be marked using so that implicits are searched
-              val needsUsing = wtp.isImplicitMethod || wtp.match
-                case MethodType(ContextBoundParamName(_) :: _) => sourceVersion.isAtLeast(`3.4`)
-                case _ => false
-              if needsUsing then app.setApplyKind(ApplyKind.Using)
+              // avoid warning if method is old-style implicit that context bounds will be contextual
+              // also required for correctly reporting implicit not found
+              app.setApplyKind(ApplyKind.Using)
               typr.println(i"try with default implicit args $app")
               // If the retyped tree still has an error type and is an `Apply`
               // node, we can report the errors for each argument nicely.
@@ -4606,13 +4608,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // Reset context in case it was set to a supercall context before.
             // otherwise the invariant for taking another this or super call context is not met.
             // Test case is i20483.scala
-            tree match
-              case tree: Block =>
-                readaptSimplified(tpd.Block(tree.stats, tpd.Apply(tree.expr, args)))
-              case tree: NamedArg =>
-                readaptSimplified(tpd.NamedArg(tree.name, tpd.Apply(tree.arg, args)))
-              case _ =>
-                readaptSimplified(tpd.Apply(tree, args))
+            val cpy = tree match
+              case tree: Block    => tpd.Block(tree.stats, tpd.Apply(tree.expr, args))
+              case tree: NamedArg => tpd.NamedArg(tree.name, tpd.Apply(tree.arg, args))
+              case _              => tpd.Apply(tree, args)
+            readaptSimplified(cpy)
       end addImplicitArgs
 
       pt.revealIgnored match {

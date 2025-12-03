@@ -30,7 +30,6 @@ import Hashable.*
 import Uniques.*
 import collection.mutable
 import config.Config
-import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion
 import annotation.{tailrec, constructorOnly}
@@ -1111,7 +1110,7 @@ object Types extends TypeUtils {
      * methods of [[java.lang.Object]], that also does not count toward the interface's
      * abstract method count.
      *
-     * @see https://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html
+     * @see https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/FunctionalInterface.html
      *
      * @return the set of methods that are abstract and do not match any of [[java.lang.Object]]
      *
@@ -2322,7 +2321,7 @@ object Types extends TypeUtils {
 
   /** A trait for proto-types, used as expected types in typer */
   trait ProtoType extends Type {
-    def isMatchedBy(tp: Type, keepConstraint: Boolean = false)(using Context): Boolean
+    def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T
     def map(tm: TypeMap)(using Context): ProtoType
 
@@ -5914,8 +5913,9 @@ object Types extends TypeUtils {
 
     override def underlying(using Context): Type = parent
 
-    def derivedAnnotatedType(parent: Type, annot: Annotation)(using Context): AnnotatedType =
+    def derivedAnnotatedType(parent: Type, annot: Annotation)(using Context): Type =
       if ((parent eq this.parent) && (annot eq this.annot)) this
+      else if annot == EmptyAnnotation then parent
       else AnnotatedType(parent, annot)
 
     override def stripTypeVar(using Context): Type =
@@ -6493,13 +6493,7 @@ object Types extends TypeUtils {
           mapCapturingType(tp, parent, refs, variance)
 
         case tp @ AnnotatedType(underlying, annot) =>
-          if annot.symbol.isRetainsLike && !Feature.ccEnabledSomewhere then
-            this(underlying) // strip retains like annotations unless capture checking is enabled
-          else
-            val underlying1 = this(underlying)
-            val annot1 = annot.mapWith(this)
-            if annot1 eq EmptyAnnotation then underlying1
-            else derivedAnnotatedType(tp, underlying1, annot1)
+          derivedAnnotatedType(tp, this(underlying), annot.mapWith(this))
 
         case _: ThisType
           | _: BoundType

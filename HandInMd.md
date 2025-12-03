@@ -22,6 +22,8 @@ Valhalla value classes cannot have fields in its body. All its fields have to be
 
 Valhalla value classes can extend AnyVal, Valhalla traits, or abstract valhalla value classes.
 
+Valhalla value classes may not have secondary constructors.
+
 ## Valhalla Traits
 
 Valhalla Traits are Universal Traits (traits that extend Any) with a `valhalla` annotation.
@@ -37,6 +39,10 @@ import scala.annotation.valhalla
 
 @valhalla trait ValhallaTrait(val x: Int, val y: Int) extends Any
 ```
+
+## Using Value Classes
+
+Use the `--Yvalue-classes` compiler option when compiling value classes in the scala compiler
 
 ## Getting Started
 

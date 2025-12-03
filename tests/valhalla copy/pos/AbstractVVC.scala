@@ -1,6 +1,9 @@
 import scala.annotation.valhalla
 
 @valhalla
-class AbstractVVC(val a: Int, val b: Int) extends AnyVal {
+class AbstractVVC extends AnyVal {
+  val a = 5
+  val b = 50
+
   def addOne(x: Int):Int = x
 }

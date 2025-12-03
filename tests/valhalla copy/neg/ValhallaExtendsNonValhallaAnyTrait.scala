@@ -5,6 +5,7 @@ import scala.annotation.valhalla
  */
 
 trait AnyTrait extends Any:
+  val x: Int = 5
   def add(x:Int, y:Int): Int
 
 
@@ -16,3 +17,4 @@ trait TraitExtendsAnyTrait extends Any with AnyTrait: // error
 class VVC extends AnyVal with AnyTrait: // error
   def add(x:Int, y:Int): Int = x + y
   def addOne(x: Int): Int = x + 1
+  def addx(y: Int): Int = x + y

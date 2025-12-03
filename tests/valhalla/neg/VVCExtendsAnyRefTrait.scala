@@ -1,7 +1,6 @@
 import scala.annotation.valhalla
 
 trait Trait:
-  val x: Int = 5
   def add(x:Int, y:Int): Int
 
 

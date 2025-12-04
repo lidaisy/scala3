@@ -11,7 +11,7 @@ class Y(val y1: Int, val y2: String, var y3: Seq[Z]):
 class Z(val z: Int) extends AnyVal
 
 @valhalla
-class C(val c: Y) extends AnyVal
+class C(val c: Y, val d: Z) extends AnyVal
 
 @valhalla
 class A(val a: Int) extends AnyVal
@@ -35,14 +35,20 @@ class Main {
     assert(b1 != b2)
 
     val y = new Y(1, "one", Seq[Z](new Z(1), new Z(2)))
-    val c1 = new C(y)
-    val c2 = new C(y)
+    val z = new Z(10)
+    val c1 = new C(y, z)
+    val c2 = new C(y, z)
     println(f"c1 == c2 is ${c1 == c2}")
     assert(c1 == c2)
 
     val y1 = new Y(1, "one", Seq[Z](new Z(1), new Z(2)))
-    val c3 = new C(y1)
+    val c3 = new C(y1, z)
     println(f"c1 == c3 is ${c1 == c3}")
     assert(c1 != c3)
+
+    val z1 = new Z(10)
+    val c4 = new C(y, z1)
+    println(f"c1 == c4 is ${c1 == c4}")
+    assert(c1 == c4)
   }
 }

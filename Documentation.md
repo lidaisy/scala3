@@ -50,18 +50,18 @@ Use the `--Yvalue-classes` compiler option when compiling value classes in the s
 
 2. Download the scala compiler.
 
-3. Run `sbt publishLocal` to use the local library that includes the value class annotation.
+3. Run `sbt scala-library-nonbootstrapped/publishLocal` to use the local library that includes the value class annotation.
 
 4. Run `sbt`
 
 4. To compile the code, inside the sbt terminal, run
 ```
-scalac -cp library/target/scala-library-nonbootstrapped/scala-library-3.8.0-RC1-bin-SNAPSHOT-nonbootstrapped.jar -d your/output/directory --Yvalue-classes path/to/your/files
+scalac -cp library/target/scala-library-nonbootstrapped/scala-library-3.8.1-RC1-bin-SNAPSHOT-nonbootstrapped.jar -d your/output/directory --Yvalue-classes path/to/your/files
 ```
 
 5. To run the program, run
 ```
-java -cp library/target/scala-library-nonbootstrapped/scala-library-3.8.0-RC1-bin-SNAPSHOT-nonbootstrapped.jar:your/output/directory --enable-preview Main
+java -cp library/target/scala-library-nonbootstrapped/scala-library-3.8.1-RC1-bin-SNAPSHOT-nonbootstrapped.jar:your/output/directory --enable-preview Main
 ```
 where java is from Project Valhalla.
 
@@ -69,6 +69,8 @@ where java is from Project Valhalla.
 ```
 javap -c -v -p your/class/file
 ```
+
+Alternatively, if you do not wish to see any class files, you can run ./test_script.sh to remove the generated class files after program execution.
 
 ## Using Explicit Self with Valhalla
 

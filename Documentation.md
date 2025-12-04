@@ -72,6 +72,11 @@ javap -c -v -p your/class/file
 
 Alternatively, if you do not wish to see any class files, you can run ./test_script.sh to remove the generated class files after program execution.
 
+## Testing
+
+To run the valhalla value class test suite, in the `sbt` terminal, run
+```testOnly * -- *checkValhallaValueClasses```
+
 ## Using Explicit Self with Valhalla
 
 ```scala

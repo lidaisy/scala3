@@ -9,8 +9,12 @@ import scala.annotation.valhalla
 @valhalla
 class T(val a: Int) extends AnyVal
 
+@valhalla
+class S(val a: Int) extends AnyVal
+
 class Main:
   def main = {
     val t = new T(1)
-    t == null
+    val s = new S(1)
+    t == s // error
   }

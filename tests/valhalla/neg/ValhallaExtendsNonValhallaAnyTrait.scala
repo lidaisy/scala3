@@ -5,6 +5,7 @@ import scala.annotation.valhalla
  */
 
 trait AnyTrait extends Any:
+  var a : Int = 2
   def add(x:Int, y:Int): Int
 
 

@@ -26,11 +26,11 @@ Valhalla value classes may not have secondary constructors.
 
 ## Valhalla Traits
 
-Valhalla Traits are Universal Traits (traits that extend Any) with a `valhalla` annotation.
+Valhalla Traits are Universal Traits (traits that extend `Any`) with a `valhalla` annotation.
 
 Like Valhalla value classes, any Valhalla trait must have immutable fields declared in its constructor only.
 
-Valhalla traits can extend Any, other Valhalla traits, or abstract Valhalla value classes.
+Valhalla traits can extend `Any` or other Valhalla traits.
 
 There is no restriction on what types can extend Valhalla traits.
 
@@ -82,7 +82,7 @@ To run the valhalla value class test suite, in the `sbt` terminal, run
 ```scala
 import scala.annotation.valhalla
 
-@valhalla abstract class Animal(val cuteness: Int) extends AnyVal
+@valhalla trait Animal(val cuteness: Int) extends AnyVal
 
 @valhalla trait Mammal extends Any:
   this: Animal =>

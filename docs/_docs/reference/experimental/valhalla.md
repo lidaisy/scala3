@@ -8,7 +8,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/valhalla.ht
 
 Valhalla value classes are the Scala equivalence of Java's Project Valhalla's value classes (see [JEP 401](https://openjdk.org/jeps/401)). Valhalla value classes differ from the current Scala value classes by allowing more than one field. Valhalla value classes behave almost the same as regular classes, except that they do not have identity. Two valhalla value classes are equal when their fields are the same.
 
-Valhalla value classes extend AnyVal and have a `valhalla` annotation.
+Valhalla value classes extend `AnyVal` and have a `valhalla` annotation.
 
 ```scala
 import scala.annotation.valhalla
@@ -28,7 +28,7 @@ Valhalla Traits are Universal Traits (traits that extend Any) with a `valhalla` 
 
 Like Valhalla value classes, any Valhalla trait must have immutable fields only.
 
-Valhalla traits can extend Any, other Valhalla traits, or abstract Valhalla value classes.
+Valhalla traits can extend `Any` or other Valhalla traits.
 
 There is no restriction on what types can extend Valhalla traits.
 
@@ -43,6 +43,10 @@ import scala.annotation.valhalla
 ## Strict Initialization of Fields
 
 Valhalla value classes and traits cannot have
+
+## Using Value Classes
+
+Use the `--Yvalue-classes` compiler option when compiling value classes in the scala compiler
 
 
 ## Using Explicit Self with Valhalla

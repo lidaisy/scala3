@@ -24,11 +24,6 @@ class RepeatableAnnotations extends MiniPhase:
   override def transformValDef(tree: ValDef)(using Context): Tree = transformDef(tree)
   override def transformDefDef(tree: DefDef)(using Context): Tree = transformDef(tree)
 
-  override def transformAssign(tree: Assign)(using Context): Tree = {
-    println(tree.asInstanceOf[Assign].rhs)
-    super.transformAssign(tree)
-  }
-
   private def transformDef(tree: DefTree)(using Context) =
     // if (tree.rhs.isInstanceOf[Assign]) then transformAssign(tree.asInstanceOf[Assign])
     val annotations = tree.symbol.annotations

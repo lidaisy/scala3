@@ -1,6 +1,6 @@
 import scala.annotation.valhalla
 
-class RecordLabel:
+trait RecordLabel:
   var name: String = "Sony"
 
 @valhalla trait SoundProduction extends Any { // error

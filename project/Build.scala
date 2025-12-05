@@ -59,7 +59,7 @@ object Build {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.8.0-RC2"
+  val referenceVersion = "3.8.0-RC3"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -1331,7 +1331,6 @@ object Build {
       // Add the source directories for the stdlib (non-boostrapped)
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories += baseDirectory.value / "src-bootstrapped",
-      Compile / compile / scalacOptions += "-Yno-stdlib-patches",
       Compile / compile / scalacOptions ++= Seq(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
@@ -1421,7 +1420,7 @@ object Build {
       Compile / classDirectory := (`scala-library-bootstrapped` / Compile / classDirectory).value,
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
@@ -1465,7 +1464,6 @@ object Build {
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories ++=
         (`scala-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
-      Compile / compile / scalacOptions += "-Yno-stdlib-patches",
       // Configure the source maps to point to GitHub for releases
       Compile / compile / scalacOptions ++= {
         if (isRelease) {
@@ -1595,7 +1593,7 @@ object Build {
       Test / run     := (`scala-library-sjs` / Test / run).evaluated,
       // Packaging configuration of the stdlib
       Compile / packageBin / publishArtifact := true,
-      Compile / packageDoc / publishArtifact := false,
+      Compile / packageDoc / publishArtifact := true,
       Compile / packageSrc / publishArtifact := true,
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,

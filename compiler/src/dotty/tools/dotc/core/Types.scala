@@ -653,7 +653,7 @@ object Types extends TypeUtils {
           tp.tp2.classSymbol
         else if tp.tp2.hasClassSymbol(defn.NothingClass) then
           tp.tp1.classSymbol
-        else {
+        else
           def tp1Null = tp.tp1.hasClassSymbol(defn.NullClass)
           def tp2Null = tp.tp2.hasClassSymbol(defn.NullClass)
           if ctx.erasedTypes && (tp1Null || tp2Null) then
@@ -661,7 +661,6 @@ object Types extends TypeUtils {
             if (otherSide.isValueClass && !otherSide.isValhallaValueClass) then defn.AnyClass else otherSide
           else
             tp.join.classSymbol
-        }
       case _: JavaArrayType =>
         defn.ArrayClass
       case _ =>

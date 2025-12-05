@@ -380,10 +380,11 @@ class CompilationTests {
   // Valhalla Value Classes tests
   @Test def checkValhallaValueClasses: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkValhallaVC")
+    val options = defaultOptions.and("-Yvalue-classes")
     val valhallaAnnotationPath = "library/target/scala-library-nonbootstrapped/scala-library-3.8.1-RC1-bin-SNAPSHOT-nonbootstrapped.jar"
 
-    compileFilesInDir("tests/valhalla/pos", defaultOptions.withClasspath(valhallaAnnotationPath)).checkCompile()
-    compileFilesInDir("tests/valhalla/neg", defaultOptions.withClasspath(valhallaAnnotationPath)).checkExpectedErrors()
+    compileFilesInDir("tests/valhalla/pos", options.withClasspath(valhallaAnnotationPath)).checkCompile()
+    compileFilesInDir("tests/valhalla/neg", options.withClasspath(valhallaAnnotationPath)).checkExpectedErrors()
   }
 }
 

@@ -428,6 +428,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var isMethSymStaticCtor        = false
     var returnType: BType          = null
     var methSymbol: Symbol         = null
+    var isValhallaCtor: Boolean    = false
     // used by genLoadTry() and genSynchronized()
     var earlyReturnVar: Symbol     = null
     var shouldEmitCleanup          = false
@@ -823,6 +824,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       jMethodName = methSymbol.javaSimpleName
       returnType  = asmMethodType(methSymbol).returnType
       isMethSymStaticCtor = methSymbol.isStaticConstructor
+      isValhallaCtor = dd.symbol.denot.owner.isValhallaValueClass && dd.symbol.isConstructor
 
       resetMethodBookkeeping(dd)
 

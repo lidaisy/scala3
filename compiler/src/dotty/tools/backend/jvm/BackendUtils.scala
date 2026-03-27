@@ -41,7 +41,7 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
   private val indyLambdaImplMethods: Lazy[ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]]] =
     ppa.perRunLazy(new ConcurrentHashMap)
 
-  lazy val classfileVersion: Int = if ppa.compilerSettings.experimental then (69 + (65535 << 16)) else BackendUtils.classfileVersionMap(ppa.compilerSettings.target.toInt)
+  lazy val classfileVersion: Int = if ppa.compilerSettings.experimental then (71 + (65535 << 16)) else BackendUtils.classfileVersionMap(ppa.compilerSettings.target.toInt)
 
   lazy val extraProc: Int = {
     import GenBCodeOps.addFlagIf

@@ -440,7 +440,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def hasWriteReplace(clazz: ClassSymbol)(using Context): Boolean =
     clazz.membersNamed(nme.writeReplace)
-      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, sourceLanguage = SourceLanguage.Scala3))
+      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, sourceLanguage = SourceLanguage.Scala3) || s.signature == Signature(defn.AnyType, sourceLanguage = SourceLanguage.Scala3))
       .exists
 
   private def hasReadResolve(clazz: ClassSymbol)(using Context): Boolean =
@@ -454,7 +454,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def readResolveDef(clazz: ClassSymbol)(using Context): TermSymbol =
     newSymbol(clazz, nme.readResolve, PrivateMethod | Synthetic,
-        MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
+        MethodType(Nil, defn.AnyType), coord = clazz.coord).entered.asTerm
 
   /** If this is a static object `Foo`, add the method:
    *

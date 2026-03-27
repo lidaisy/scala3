@@ -1255,7 +1255,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         for case parent: RefTree <- templ1.parents do
           typedAhead(parent, tree => inferTypeParams(typedType(tree), pt))
         val anon = tpnme.ANON_CLASS
-        val clsDef = TypeDef(anon, templ1).withFlags(Final | Synthetic).withAddedAnnotation(makeValhallaAnnot().withSpan(tree.span)) //here omg .withAddedAnnotation(makeValhallaAnnot())
+        val clsDef = TypeDef(anon, templ1).withFlags(Final | Synthetic)
         typed(
           cpy.Block(tree)(
             clsDef :: Nil,
@@ -3456,13 +3456,26 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     end implementDeferredGivens
 
     ensureCorrectSuperClass()
-    completeAnnotations(cdef, cls)
+    // completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parents1 = parentTrees(
         cls.classInfo.declaredParents,
         parents.mapconserve(typedParent).filterConserve(!_.isEmpty))
     val firstParentTpe = parents1.head.tpe.dealias
     val firstParent = firstParentTpe.typeSymbol
+
+    val cdef1 =
+      if(firstParentTpe.classSymbol.isEnum && firstParentTpe.classSymbol.isValhallaValueClass
+          && !cls.hasAnnotation(defn.ValhallaAnnot)){
+        println(s"WHAT???? ${firstParentTpe.classSymbol}")
+        val valhallaAnnot = untpd.makeValhallaAnnot().withSpan(cdef.span)
+        val typedValhallaAnnot = ConcreteAnnotation(typedAnnotation(valhallaAnnot))
+        cls.addAnnotation(typedValhallaAnnot)
+        cdef.withAddedAnnotation(valhallaAnnot)
+      }
+      else
+        cdef
+    completeAnnotations(cdef1, cls)
 
     checkEnumParent(cls, firstParent)
 
@@ -3472,7 +3485,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val self1 = typed(self)(using ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1))
       // fail fast to avoid typing the body with an error type
-      cdef.withType(UnspecifiedErrorType)
+      cdef1.withType(UnspecifiedErrorType)
     else {
       val dummy = localDummy(cls, impl)
       val body1 =
@@ -3485,25 +3498,25 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
         .withType(dummy.termRef)
       if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
-        checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
+        checkRealizableBounds(cls, cdef1.sourcePos.withSpan(cdef1.nameSpan))
       if cls.isEnum || !cls.isRefinementClass && firstParentTpe.classSymbol.isEnum then
-        checkEnum(cdef, cls, firstParent)
-      val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
+        checkEnum(cdef1, cls, firstParent)
+      val cdef2 = assignType(cpy.TypeDef(cdef1)(name, impl1), cls)
 
       val reportDynamicInheritance =
         ctx.phase.isTyper &&
-        cdef1.symbol.ne(defn.DynamicClass) &&
-        cdef1.tpe.derivesFrom(defn.DynamicClass) &&
+        cdef2.symbol.ne(defn.DynamicClass) &&
+        cdef2.tpe.derivesFrom(defn.DynamicClass) &&
         !Feature.dynamicsEnabled
       if (reportDynamicInheritance) {
         val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
-        report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.srcPos)
+        report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef2.srcPos)
       }
 
-      checkNonCyclicInherited(cls.thisType, cls.info.parents, cls.info.decls, cdef.srcPos)
+      checkNonCyclicInherited(cls.thisType, cls.info.parents, cls.info.decls, cdef1.srcPos)
 
       // check value class constraints
-      checkDerivedValueClass(cdef, cls, body1)
+      checkDerivedValueClass(cdef1, cls, body1)
 
       val effectiveOwner = cls.owner.skipWeakOwner
       if cls.is(ModuleClass)
@@ -3511,17 +3524,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
          && !effectiveOwner.derivesFrom(defn.ObjectClass)
          && !effectiveOwner.isValhallaValueClass
       then
-        report.error(em"$cls cannot be defined in universal $effectiveOwner", cdef.srcPos)
+        report.error(em"$cls cannot be defined in universal $effectiveOwner", cdef1.srcPos)
 
       // Temporarily set the typed class def as root tree so that we have at least some
       // information in the IDE in case we never reach `SetRootTree`.
       if (ctx.mode.is(Mode.Interactive) && ctx.settings.YretainTrees.value)
-        cls.rootTreeOrProvider = cdef1
+        cls.rootTreeOrProvider = cdef2
 
       for (deriver <- cdef.removeAttachment(AttachedDeriver))
-        cdef1.putAttachment(AttachedDeriver, deriver)
+        cdef2.putAttachment(AttachedDeriver, deriver)
 
-      cdef1
+      cdef2
     }
   }
 

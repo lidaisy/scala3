@@ -18,12 +18,13 @@ enum Planet(mass: Double, radius: Double) extends AnyVal:
 end Planet
 
 class Main:
-  // def main(args: Array[String]) =
-  //   val earthWeight = args(0).toDouble
-  //   val mass = earthWeight / Planet.Earth.surfaceGravity
-  //   for p <- Planet.values do
-  //     println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
+  def main(args: Array[String]) =
+    val earthWeight = args(0).toDouble
+    val mass = earthWeight / Planet.Earth.surfaceGravity
+    for p <- Planet.values do
+      println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 
-  def main = {
-    println(Planet.Earth == Planet.Earth1)
-  }
+    println(Planet.valueOf("Mercury"))
+    println(Planet.fromOrdinal(0))
+    println(Planet.Mercury.ordinal)
+    println(Planet.Earth == Planet.Earth)

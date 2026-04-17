@@ -17,12 +17,9 @@ enum Planet(mass: Double, radius: Double):
 end Planet
 
 class Main:
-  // def main(args: Array[String]) =
-  //   val earthWeight = args(0).toDouble
-  //   val mass = earthWeight / Planet.Earth.surfaceGravity
-  //   for p <- Planet.values do
-  //     println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
-
-  def main = {
+  def main(args: Array[String]) =
+    val earthWeight = args(0).toDouble
+    val mass = earthWeight / Planet.Earth.surfaceGravity
+    for p <- Planet.values do
+      println(p) // s"Your weight on $p is" ${p.surfaceWeight(mass)}
     println(Planet.Earth == Planet.Earth1)
-  }

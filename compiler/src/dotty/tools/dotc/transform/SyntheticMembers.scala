@@ -59,6 +59,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private var myValueSymbols: List[Symbol] = Nil
   private var myCaseSymbols: List[Symbol] = Nil
+  private var myValueCaseSymbols: List[Symbol] = Nil
   private var myCaseModuleSymbols: List[Symbol] = Nil
   private var myEnumValueSymbols: List[Symbol] = Nil
   private var myNonJavaEnumValueSymbols: List[Symbol] = Nil
@@ -67,6 +68,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
       myCaseSymbols = defn.caseClassSynthesized
+      myValueCaseSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
       myEnumValueSymbols = List(defn.Product_productPrefix)
       myNonJavaEnumValueSymbols = myEnumValueSymbols :+ defn.Any_toString :+ defn.Enum_ordinal :+ defn.Any_hashCode
@@ -74,6 +76,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   def valueSymbols(using Context): List[Symbol] = { initSymbols; myValueSymbols }
   def caseSymbols(using Context): List[Symbol] = { initSymbols; myCaseSymbols }
+  def valueCaseSymbols(using Context): List[Symbol] = { initSymbols; myValueCaseSymbols }
   def caseModuleSymbols(using Context): List[Symbol] = { initSymbols; myCaseModuleSymbols }
   def enumValueSymbols(using Context): List[Symbol] = { initSymbols; myEnumValueSymbols }
   def nonJavaEnumValueSymbols(using Context): List[Symbol] = { initSymbols; myNonJavaEnumValueSymbols }
@@ -108,6 +111,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val symbolsToSynthesize: List[Symbol] =
       if clazz.is(Case) then
         if clazz.is(Module) then caseModuleSymbols
+        // else if clazz is a deep valhalla class then valueCaseSymbols
         else caseSymbols
       else if isNonJavaEnumValue then nonJavaEnumValueSymbols
       else if isEnumValue then enumValueSymbols

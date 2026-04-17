@@ -3467,7 +3467,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val cdef1 =
       if(firstParentTpe.classSymbol.isEnum && firstParentTpe.classSymbol.isValhallaValueClass
           && !cls.hasAnnotation(defn.ValhallaAnnot)){
-        println(s"WHAT???? ${firstParentTpe.classSymbol}")
         val valhallaAnnot = untpd.makeValhallaAnnot().withSpan(cdef.span)
         val typedValhallaAnnot = ConcreteAnnotation(typedAnnotation(valhallaAnnot))
         cls.addAnnotation(typedValhallaAnnot)

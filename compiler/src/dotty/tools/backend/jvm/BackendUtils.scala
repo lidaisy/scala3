@@ -37,7 +37,7 @@ class BackendUtils(val ppa: PostProcessorFrontendAccess, val ts: CoreBTypes)(usi
     ppa.perRunLazy(new ConcurrentHashMap)
 
   // take advantage of the fact classfile versions are consecutive
-  lazy val classfileVersion: Int = ppa.compilerSettings.target.toInt + (Opcodes.V17 - 17)
+  lazy val classfileVersion: Int = if ppa.compilerSettings.experimental then (71 + (65535 << 16)) else ppa.compilerSettings.target.toInt + (Opcodes.V17 - 17)
 
   def collectSerializableLambdas(classNode: ClassNode): Array[Handle] = {
     val indyLambdaBodyMethods = new mutable.ArrayBuffer[Handle]

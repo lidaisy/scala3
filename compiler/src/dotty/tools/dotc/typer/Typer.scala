@@ -3464,17 +3464,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val firstParentTpe = parents1.head.tpe.dealias
     val firstParent = firstParentTpe.typeSymbol
 
-    val cdef1 =
-      if(firstParentTpe.classSymbol.isEnum && firstParentTpe.classSymbol.isValhallaValueClass
-          && !cls.hasAnnotation(defn.ValhallaAnnot)){
-        val valhallaAnnot = untpd.makeValhallaAnnot().withSpan(cdef.span)
-        val typedValhallaAnnot = ConcreteAnnotation(typedAnnotation(valhallaAnnot))
-        cls.addAnnotation(typedValhallaAnnot)
-        cdef.withAddedAnnotation(valhallaAnnot)
-      }
-      else
-        cdef
-    completeAnnotations(cdef1, cls)
+    if(firstParentTpe.classSymbol.isValhallaValueClass && !cls.hasAnnotation(defn.ValhallaAnnot))
+      val valhallaAnnot = untpd.makeValhallaAnnot().withSpan(cdef.span)
+      val typedValhallaAnnot = ConcreteAnnotation(typedAnnotation(valhallaAnnot))
+      cls.addAnnotation(typedValhallaAnnot)
+
+    completeAnnotations(cdef, cls)
 
     checkEnumParent(cls, firstParent)
 
@@ -3484,7 +3479,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val self1 = typed(self)(using ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1))
       // fail fast to avoid typing the body with an error type
-      cdef1.withType(UnspecifiedErrorType)
+      cdef.withType(UnspecifiedErrorType)
     else {
       val dummy = localDummy(cls, impl)
       val body1 =
@@ -3497,25 +3492,25 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
         .withType(dummy.termRef)
       if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
-        checkRealizableBounds(cls, cdef1.sourcePos.withSpan(cdef1.nameSpan))
+        checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
       if cls.isEnum || !cls.isRefinementClass && firstParentTpe.classSymbol.isEnum then
-        checkEnum(cdef1, cls, firstParent)
-      val cdef2 = assignType(cpy.TypeDef(cdef1)(name, impl1), cls)
+        checkEnum(cdef, cls, firstParent)
+      val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
 
       val reportDynamicInheritance =
         ctx.phase.isTyper &&
-        cdef2.symbol.ne(defn.DynamicClass) &&
-        cdef2.tpe.derivesFrom(defn.DynamicClass) &&
+        cdef1.symbol.ne(defn.DynamicClass) &&
+        cdef1.tpe.derivesFrom(defn.DynamicClass) &&
         !Feature.dynamicsEnabled
       if (reportDynamicInheritance) {
         val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
-        report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef2.srcPos)
+        report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef1.srcPos)
       }
 
-      checkNonCyclicInherited(cls.thisType, cls.info.parents, cls.info.decls, cdef1.srcPos)
+      checkNonCyclicInherited(cls.thisType, cls.info.parents, cls.info.decls, cdef.srcPos)
 
       // check value class constraints
-      checkDerivedValueClass(cdef1, cls, body1)
+      checkDerivedValueClass(cdef, cls, body1)
 
       val effectiveOwner = cls.owner.skipWeakOwner
       if cls.is(ModuleClass)
@@ -3523,17 +3518,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
          && !effectiveOwner.derivesFrom(defn.ObjectClass)
          && !effectiveOwner.isValhallaValueClass
       then
-        report.error(em"$cls cannot be defined in universal $effectiveOwner", cdef1.srcPos)
+        report.error(em"$cls cannot be defined in universal $effectiveOwner", cdef.srcPos)
 
       // Temporarily set the typed class def as root tree so that we have at least some
       // information in the IDE in case we never reach `SetRootTree`.
       if (ctx.mode.is(Mode.Interactive) && ctx.settings.YretainTrees.value)
-        cls.rootTreeOrProvider = cdef2
+        cls.rootTreeOrProvider = cdef1
 
       for (deriver <- cdef.removeAttachment(AttachedDeriver))
-        cdef2.putAttachment(AttachedDeriver, deriver)
+        cdef1.putAttachment(AttachedDeriver, deriver)
 
-      cdef2
+      cdef1
     }
   }
 
@@ -3557,6 +3552,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *       extended by the superclass).
    */
   def ensureConstrCall(cls: ClassSymbol, parent: Tree, psym: Symbol)(using Context): Tree =
+    // println(s"cls $cls, parent $parent, psym $psym, parent.isType ${parent.isType}")
     if parent.isType && !cls.is(Trait) && !cls.is(JavaDefined) && psym.isClass && cls != defn.AnyValClass
         // Annotations are represented as traits with constructors, but should
         // never be called as such outside of annotation trees.
@@ -3812,6 +3808,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    */
   def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
     record("typedUnadapted")
+    // println(s"0: initTree: ${initTree}, pt: $pt, locked: $locked")
     val xtree = expanded(initTree)
     xtree.removeAttachment(TypedAhead) match {
       case Some(ttree) => ttree
@@ -3941,7 +3938,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             else xtree match
               case xtree: untpd.NameTree => typedNamed(xtree, pt)
               case xtree => typedUnnamed(xtree)
-
+          // println(s"result: $result")
           val unsimplifiedType = result.tpe
           simplify(result, pt, locked)
           result.tpe.stripTypeVar match

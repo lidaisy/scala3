@@ -88,6 +88,15 @@ class SymUtils:
       !d.isValhallaValueClass
     }
 
+    def isDeepValhallaOrPrimitive(using Context): Boolean =
+      self.isDeepValhalla || self.isPrimitiveValueClass
+
+    def isJavaInterface(using Context): Boolean =
+      self.is(Trait) && self.is(JavaDefined)
+
+    def isInScalaPackage(using Context): Boolean =
+      self.ownersIterator.contains(defn.ScalaPackageClass)
+
     def isContextBoundCompanion(using Context): Boolean =
       self.is(Synthetic) && self.infoOrCompleter.isContextBoundCompanion
 

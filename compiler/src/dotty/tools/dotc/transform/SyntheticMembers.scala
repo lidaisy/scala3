@@ -111,7 +111,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val symbolsToSynthesize: List[Symbol] =
       if clazz.is(Case) then
         if clazz.is(Module) then caseModuleSymbols
-        // else if clazz is a deep valhalla class then valueCaseSymbols
+        else if clazz.isDeepValhalla then valueCaseSymbols
         else caseSymbols
       else if isNonJavaEnumValue then nonJavaEnumValueSymbols
       else if isEnumValue then enumValueSymbols

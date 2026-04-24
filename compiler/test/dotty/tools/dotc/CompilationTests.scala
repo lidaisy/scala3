@@ -405,11 +405,29 @@ class CompilationTests {
   // Valhalla Value Classes tests
   @Test def checkValhallaValueClasses: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkValhallaVC")
-    val options = defaultOptions.and("-Yvalue-classes").and("-experimental")
-    val valhallaAnnotationPath = "library/target/scala-library-nonbootstrapped/scala-library-3.8.1-RC1-bin-SNAPSHOT-nonbootstrapped.jar"
+    compileFilesInDir("tests/valhalla/pos", valueClassOptions).checkCompile()
+    compileFilesInDir("tests/valhalla/neg", valueClassOptions).checkExpectedErrors()
+  }
 
-    compileFilesInDir("tests/valhalla/pos", options).checkCompile()
-    compileFilesInDir("tests/valhalla/neg", options).checkExpectedErrors()
+  @Test def valueClassesRun: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("valueClassesRun")
+    
+    locally {
+      val caseClassesGroup = TestGroup("valueClassesRun/case-classes")
+      val caseClassOptions = valueClassOptions.and("-Yexplicit-nulls")
+
+      val valueOptionClass =  Paths.get(defaultOutputDir.getAbsolutePath, caseClassesGroup.name, "ValueOption", "valuelib", "ValueOption").toString
+      val valueOptionTest = withCoverage(compileFile("tests/valhalla/case-classes/valuelib/ValueOption.scala", caseClassOptions)(using caseClassesGroup).keepOutput)
+      runWithCoverageOrFallback[PosTestWithCoverage](valueOptionTest, "Pos")
+
+      val main = withCoverage(compileFile("tests/valhalla/case-classes/ValueOptionAnimals.scala", caseClassOptions.withClasspath(valueOptionClass))(using caseClassesGroup).keepOutput)
+      runWithCoverageOrFallback[PosTestWithCoverage](main, "Pos")
+      // runWithCoverageOrFallback[RunTestWithCoverage](main, "Run")
+      valueOptionTest.delete()
+      main.delete()
+    }
+    // val compilationTest = withCoverage(compileFilesInDir("tests/valhalla/case-classes", valueClassOptions))
+    // runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
   }
 }
 

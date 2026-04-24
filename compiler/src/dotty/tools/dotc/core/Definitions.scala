@@ -330,6 +330,8 @@ class Definitions {
   }
   def ObjectType: TypeRef = ObjectClass.typeRef
 
+  @tu lazy val DeepValhallaTrait: ClassSymbol = requiredClass("scala.DeepValhalla")
+
   /** A type alias of Object used to represent any reference to Object in a Java
    *  signature, the secret sauce is that subtype checking treats it specially:
    *

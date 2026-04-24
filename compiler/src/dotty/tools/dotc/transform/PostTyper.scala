@@ -532,6 +532,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 // which would not be reflected as `tree.tpe`
                 checkClassType(nu.tpe, stablePrefixReq = false)
               Checking.checkInstantiable(tree.tpe, nu.tpe, nu.srcPos)
+              Checking.checkDeepValhallaInstantiation(tree.tpe, nu.srcPos)
               withNoCheckNews(nu :: Nil)(app1)
             case _ =>
               app1

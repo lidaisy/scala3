@@ -145,7 +145,7 @@ object ValueOption {
  */
 @valhalla
 @SerialVersionUID(-114498752079829388L) // value computed by serialver for 2.11.2, annotation added in 2.11.4
-sealed abstract class ValueOption[+A] extends AnyVal with IterableOnce[A] with Product with Serializable {
+sealed abstract class ValueOption[+A] extends AnyVal with IterableOnce[A] with Product with Serializable with DeepValhalla {
   self =>
 
   /** Returns true if the option is $none, false otherwise.

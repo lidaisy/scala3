@@ -119,7 +119,6 @@ object PostProcessorFrontendAccess {
           case (None, None) => "17" // least supported version by default
 
       override val experimental = s.YvalueClasses.value
-
       override val debug: Boolean = ctx.debug
       override val dumpClassesDirectory: Option[String] = s.Xdumpclasses.valueSetByUser
       override val outputDirectory: AbstractFile = s.outputDir.value
